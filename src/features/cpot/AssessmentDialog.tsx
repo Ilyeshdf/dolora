@@ -7,7 +7,13 @@ import { useFormat, useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { fmtTime } from '@/lib/time';
 import { useMonitor } from '@/store/monitor';
-import { toast } from '@/components/ui/toastStore';
+import { useClinical } from '@/store/clinical';
+import { preferredScale } from '@/clinical/profile';
+import { TimePick } from '@/features/entry/common';
+import { useBedActions } from '@/features/entry/useBedActions';
+import { SeverityPill } from '@/components/clinical/severity';
+import { severityOf } from '@/lib/clinical';
+import { useView } from '@/features/monitor/useView';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { FieldMessage, Switch, TextInput } from '@/components/ui/Form';
@@ -48,14 +54,19 @@ function AssessmentBody({ prefill }: { prefill?: boolean }) {
   const t = useT();
   const l = useL10n();
   const f = useFormat();
-  const view = useMonitor((s) => s.view);
-  const save = useMonitor((s) => s.saveAssessment);
+  const view = useView();
+  const actions = useBedActions();
+  const setDialog = useMonitor((s) => s.setDialog);
+  const requested = useMonitor((s) => s.dialogScale);
+  const profile = useClinical((s) => s.beds[actions.bedId]?.profile ?? null);
   const nmb = view.context.some((c) => c.flag === 'NMB');
-  // Item 3 follows the airway: ventilated (or paralysed) → ventilator compliance (§7.6).
-  const intubatedDefault = view.context.some((c) => c.flag === 'CONTROLLED_VENTILATION' || c.flag === 'NMB');
+  // Item 3 follows the airway: intubated → ventilator compliance, otherwise vocalization (§7.6, task §3.2-E).
+  const intubatedDefault = profile ? profile.airway !== 'none' : view.context.some((c) => c.flag === 'CONTROLLED_VENTILATION' || c.flag === 'NMB');
+  const firstScale: ScaleId = prefill ? 'CPOT' : (requested ?? preferredScale(profile));
   const [expanded, setExpanded] = useState(true);
+  const [at, setAt] = useState(() => view.now);
 
-  const initial = prefill ? { ...emptyAssessment('CPOT', true), items: [1, 1, 1, 1], total: 4 } : emptyAssessment('CPOT', intubatedDefault);
+  const initial = prefill ? { ...emptyAssessment('CPOT', true), items: [1, 1, 1, 1], total: 4 } : emptyAssessment(firstScale, intubatedDefault);
   const { control, handleSubmit, setValue, reset, formState } = useForm<AssessmentForm>({
     resolver: zodResolver(assessmentSchema),
     defaultValues: initial,
@@ -81,8 +92,8 @@ function AssessmentBody({ prefill }: { prefill?: boolean }) {
 
   const onSubmit = (v: AssessmentForm) => {
     if (v.total === null) return;
-    save({ scale: v.scale, total: v.total, items: v.items.every((i) => i !== null) ? (v.items as number[]) : null, note: v.note.trim() });
-    toast({ title: t.toast.referenceRecorded, description: t.toast.recordedDetail(v.scale, v.total, SCALES[v.scale].max) });
+    actions.addReference({ scale: v.scale, value: v.total, items: v.items.length && v.items.every((i) => i !== null) ? (v.items as number[]) : null, t: at, note: v.note.trim() });
+    setDialog(null);
   };
 
   const errKey = (formState.errors.total?.message ?? formState.errors.items?.message ?? formState.errors.note?.message) as
@@ -112,11 +123,16 @@ function AssessmentBody({ prefill }: { prefill?: boolean }) {
               options={[
                 { value: 'CPOT', label: 'CPOT' },
                 { value: 'BPS', label: 'BPS' },
+                { value: 'NRS', label: t.entry.nrs.tab },
               ]}
             />
           )}
         />
-        <p className="nowrap text-sm text-muted">{t.assessment.meta(view.patient.ref, view.patient.bed, fmtTime(view.timeline.now, false))}</p>
+        <p className="nowrap text-sm text-muted">{t.assessment.meta(view.patient.ref, view.patient.bed, fmtTime(view.now, false))}</p>
+      </div>
+      <div className="mt-4 flex items-center gap-6">
+        <p className="w-[190px] shrink-0 text-md font-medium">{t.entry.assessedAt}</p>
+        <TimePick now={view.now} value={at} onChange={setAt} label={t.entry.assessedAt} />
       </div>
 
       {nmb ? (
@@ -130,9 +146,9 @@ function AssessmentBody({ prefill }: { prefill?: boolean }) {
       <div className="mt-6 flex items-center gap-6 border-b border-card-border pb-6 hc:border-ink">
         <div className="w-[190px] shrink-0">
           <p id="quick-label" className="nowrap text-md font-medium">
-            {t.assessment.quickEntry}
+            {scale === 'NRS' ? t.entry.nrs.quick : t.assessment.quickEntry}
           </p>
-          <p className="nowrap text-sm text-muted">{t.assessment.quickSub}</p>
+          <p className="text-sm text-muted">{scale === 'NRS' ? t.entry.nrs.quickSub : t.assessment.quickSub}</p>
         </div>
         <div role="radiogroup" aria-labelledby="quick-label" className="flex flex-wrap gap-2.5">
           {quickValues.map((v) => {
@@ -157,7 +173,7 @@ function AssessmentBody({ prefill }: { prefill?: boolean }) {
       </div>
 
       {/* full scale */}
-      <div className="pt-4">
+      <div className={cn('pt-4', scale === 'NRS' && 'hidden')}>
         <button
           type="button"
           aria-expanded={expanded}
@@ -219,7 +235,8 @@ function AssessmentBody({ prefill }: { prefill?: boolean }) {
             <span className="text-[44px] font-bold leading-none">{total ?? '—'}</span>
             <span className="text-xl text-text-2">/ {s.max}</span>
           </p>
-          {total !== null ? (
+          {total !== null && scale === 'NRS' ? <SeverityPill severity={severityOf(total)} size="md" className="mb-1" /> : null}
+          {total !== null && scale !== 'NRS' ? (
             painLikely(scale, total) ? (
               <Badge tone="advisory" size="lg" className="mb-1" icon={<Info aria-hidden size={16} strokeWidth={1.75} />}>
                 {t.assessment.painLikely(s.threshold)}

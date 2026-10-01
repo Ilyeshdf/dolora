@@ -8,6 +8,7 @@ import { UnitPage } from '@/features/unit/UnitPage';
 import { TimelinePage } from '@/features/timeline/TimelinePage';
 import { AssessmentsPage } from '@/features/assessments/AssessmentsPage';
 import { AuditTrailPage } from '@/features/audit/AuditTrailPage';
+import { AdmissionPage } from '@/features/admission/AdmissionPage';
 import { ThemeSync } from './ThemeSync';
 
 export function App() {
@@ -27,6 +28,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/dev/components" element={<ComponentsPage />} />
       <Route path="/bed/:bedId/monitor" element={<MonitorPage />} />
+      <Route path="/bed/:bedId/admit" element={<AdmissionPage />} />
       <Route path="/bed/:bedId/timeline" element={<TimelinePage />} />
       <Route path="/bed/:bedId/assessments" element={<AssessmentsPage />} />
       <Route path="/bed/:bedId/audit" element={<AuditTrailPage />} />
@@ -36,4 +38,6 @@ function AppRoutes() {
     </Routes>
   );
 }
+
+  
 

@@ -38,9 +38,12 @@ const ORDER: AttributionClass[] = ['pain', 'stress', 'agitation', 'rest', 'unexp
 export function AttributionBar({
   shares,
   agitationLabel = 'agitation',
+  emptyText,
   className,
 }: {
   shares: AttributionShares | null;
+  /** Empty-state text override (calibration: "Available after calibration"). */
+  emptyText?: string;
   agitationLabel?: 'agitation' | 'activity';
   className?: string;
 }) {
@@ -59,7 +62,7 @@ export function AttributionBar({
         <div className="h-9 rounded-[10px] border border-dashed border-card-border hc:border-ink" />
         <p className="mt-4 flex items-center gap-2 text-md text-text-2">
           <Info aria-hidden size={18} strokeWidth={1.75} />
-          {t.attribution.emptyRejected}
+          {emptyText ?? t.attribution.emptyRejected}
         </p>
       </div>
     );

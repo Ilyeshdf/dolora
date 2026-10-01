@@ -15,3 +15,9 @@ export function fmtCountdown(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+
+/** Age of a value for freshness tags: "45 s", "12 min", "3 h 40 min" (unit words come from i18n). */
+export function ageParts(ms: number): { h: number; m: number; s: number } {
+  const total = Math.max(0, Math.round(ms / 1000));
+  return { h: Math.floor(total / 3600), m: Math.floor((total % 3600) / 60), s: total % 60 };
+}

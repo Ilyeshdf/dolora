@@ -1,48 +1,57 @@
 import { useState } from 'react';
-import { Anchor, ArrowLeftRight, Bell, CircleCheck, ClipboardList, Download, Plug, Scale } from 'lucide-react';
+import { Anchor, ArrowLeftRight, Bell, CircleCheck, ClipboardList, Download, Plug, Scale, UserRound } from 'lucide-react';
 import { useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { fmtTime } from '@/lib/time';
-import { useMonitor, type AuditEntry, type AuditKind } from '@/store/monitor';
+import { useClinical } from '@/store/clinical';
+import { useMonitor } from '@/store/monitor';
+import type { AuditEntry, AuditKind } from '@/store/auditTypes';
+import { useView } from '@/features/monitor/useView';
 import { Button } from '@/components/ui/Button';
 import { RightDrawer } from '@/components/ui/Overlay';
 
 type Filter = 'all' | 'alert' | 'context' | 'assessment' | 'mode' | 'system';
 const FILTERS: Filter[] = ['all', 'alert', 'context', 'assessment', 'mode', 'system'];
-/** Baseline marking is filed with assessments (it is a clinician reference action, D-46). */
-const FILTER_OF: Record<AuditKind, Filter> = { alert: 'alert', context: 'context', assessment: 'assessment', baseline: 'assessment', mode: 'mode', system: 'system' };
+/** Baseline → Assessments (D-46); profile edits → Context (clinical context of interpretation, D-54). */
+const FILTER_OF: Record<AuditKind, Filter> = { alert: 'alert', context: 'context', profile: 'context', assessment: 'assessment', baseline: 'assessment', mode: 'mode', system: 'system' };
 
 function iconFor(e: AuditEntry) {
   if (e.kind === 'alert') return e.actor === 'system' ? Bell : CircleCheck;
   if (e.kind === 'context') return Scale;
+  if (e.kind === 'profile') return UserRound;
   if (e.kind === 'mode') return ArrowLeftRight;
   if (e.kind === 'assessment') return ClipboardList;
   if (e.kind === 'baseline') return Anchor;
   return Plug;
 }
 
-/** Audit trail drawer — A6. Append-only list, newest first; filters; JSON export (Blob). */
+/** Audit trail drawer — A6. Append-only; old → new; retroactive entries show both times. */
 export function AuditDrawer({ top }: { top: number }) {
   const t = useT();
   const l = useL10n();
   const open = useMonitor((s) => s.panel === 'audit');
   const setPanel = useMonitor((s) => s.setPanel);
-  const audit = useMonitor((s) => s.audit);
-  const patient = useMonitor((s) => s.view.patient);
+  const bedId = useMonitor((s) => s.bedId);
+  const audit = useClinical((s) => s.beds[bedId]?.audit) ?? NONE;
+  const patient = useView().patient;
   const [filter, setFilter] = useState<Filter>('all');
-  const entries = [...audit].sort((a, b) => b.t - a.t).filter((e) => filter === 'all' || FILTER_OF[e.kind] === filter);
+  const entries = [...audit].sort((a, b) => b.enteredAt - a.enteredAt || b.t - a.t).filter((e) => filter === 'all' || FILTER_OF[e.kind] === filter);
 
   const exportJson = () => {
     const payload = {
       patient_ref: patient.ref,
       bed: patient.bed,
       exported_at: new Date().toISOString(),
-      entries: [...audit].sort((a, b) => b.t - a.t).map((e) => ({
+      entries: entries.map((e) => ({
         time: new Date(e.t).toISOString(),
+        entered_at: new Date(e.enteredAt).toISOString(),
         actor: e.actor === 'clinician' ? `clinician:${e.who ?? ''}` : 'system',
         kind: e.kind,
         action: e.action.en,
         detail: e.detail?.en ?? null,
+        old: e.old?.en ?? null,
+        new: e.new?.en ?? null,
+        removed_reason: e.removedReason?.en ?? null,
       })),
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
@@ -90,6 +99,7 @@ export function AuditDrawer({ top }: { top: number }) {
       <ol className="mt-3">
         {entries.map((e, i) => {
           const Icon = iconFor(e);
+          const retro = e.enteredAt - e.t > 30_000;
           return (
             <li key={e.id} className="relative flex gap-4 pb-5">
               {i < entries.length - 1 ? <span aria-hidden className="absolute bottom-0 left-[21px] top-12 w-px bg-card-border hc:bg-ink" /> : null}
@@ -97,22 +107,26 @@ export function AuditDrawer({ top }: { top: number }) {
                 <Icon aria-hidden size={19} strokeWidth={1.75} />
               </span>
               <div className="min-w-0 pt-1">
-                <p className="flex items-center gap-2">
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <time dateTime={new Date(e.t).toISOString()} className="text-md font-bold">
                     {fmtTime(e.t)}
                   </time>
-                  <span
-                    className={cn(
-                      'nowrap rounded-full px-2 py-0.5 text-xs font-medium',
-                      e.actor === 'clinician' ? 'bg-sky text-ink' : 'bg-track text-text-2',
-                      'hc:border hc:border-ink',
-                    )}
-                  >
+                  <span className={cn('nowrap rounded-full px-2 py-0.5 text-xs font-medium', e.actor === 'clinician' ? 'bg-sky text-ink' : 'bg-track text-text-2', 'hc:border hc:border-ink')}>
                     {e.actor === 'clinician' ? t.audit.clinician(e.who ?? '') : t.audit.system}
                   </span>
+                  {retro ? <span className="nowrap text-xs text-muted">{t.audit.entered(fmtTime(e.enteredAt))}</span> : null}
                 </p>
                 <p className="mt-1 text-lg font-semibold leading-6">{l(e.action)}</p>
-                {e.detail ? <p className="mt-0.5 text-sm text-text-2">{l(e.detail)}</p> : null}
+                {e.detail ? <p className={cn('mt-0.5 text-sm text-text-2', e.removedReason && 'line-through decoration-1')}>{l(e.detail)}</p> : null}
+                {e.old || e.new ? (
+                  <p className="mt-0.5 text-sm text-text-2">
+                    <span className="line-through decoration-1">{e.old ? l(e.old) : '—'}</span>
+                    <span aria-hidden> → </span>
+                    <span className="sr-only"> {t.audit.changedTo} </span>
+                    <span className="font-medium text-ink">{e.new ? l(e.new) : '—'}</span>
+                  </p>
+                ) : null}
+                {e.removedReason ? <p className="mt-0.5 text-sm font-medium text-text-2">{t.audit.reason(l(e.removedReason))}</p> : null}
               </div>
             </li>
           );
@@ -122,3 +136,5 @@ export function AuditDrawer({ top }: { top: number }) {
     </RightDrawer>
   );
 }
+
+const NONE: AuditEntry[] = [];

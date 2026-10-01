@@ -3,11 +3,13 @@ import { MessageSquare, RefreshCw, Tag, ZoomIn } from 'lucide-react';
 import { useFormat, useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { useMonitor } from '@/store/monitor';
+import { useView } from '@/features/monitor/useView';
 import type { ChannelView, DriverView, SensorId } from '@/contracts/monitor';
 import { SensorHotspot, SensorLegend, type HotspotState } from '@/components/clinical/SensorHotspot';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { MaskedIcon } from '@/components/clinical/icons';
 import { Silhouette } from './Silhouette';
+import { SignalCheck } from '@/features/monitor/Calibration';
 import { FIGURE_VIEWBOX } from './figure';
 import { useCompact } from '@/features/monitor/useCompact';
 
@@ -57,7 +59,7 @@ const CALLOUT_GAP = 20;
 /** `reserveBottom` = height covered by the floating timeline card. */
 export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
   const t = useT();
-  const view = useMonitor((s) => s.view);
+  const view = useView();
   const rail = useMonitor((s) => s.rail);
   const highlight = useMonitor((s) => s.highlight);
   const sensorHighlight = useMonitor((s) => s.sensorHighlight);
@@ -163,6 +165,7 @@ export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
         <Callout key={c.driver.id} driver={c.driver} x={c.x} y={c.y} w={c.w} highlighted={highlight === c.driver.id || highlightedSensor === c.driver.sensor} />
       ))}
 
+      {view.calibrating ? <SignalCheck channels={view.channels} /> : null}
       <ToolRail hasDrivers={view.drivers.length > 0} />
       <SensorLegend states={legendStates} withShapes={false} className="absolute bottom-[262px] left-6 compact:hidden" />
     </div>

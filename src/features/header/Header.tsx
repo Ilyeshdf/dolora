@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useLocation, useParams } from 'react-router-dom';
+import { NavLink, useParams } from 'react-router-dom';
 import { Contrast, Moon, Sun } from 'lucide-react';
 import { useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
@@ -21,44 +21,61 @@ export function Header() {
   const t = useT();
   const l = useL10n();
   const view = useMonitor((s) => s.view);
+  const panel = useMonitor((s) => s.panel);
+  const setPanel = useMonitor((s) => s.setPanel);
   const confirmMode = useMonitor((s) => s.confirmMode);
-  const clinician = useMonitor((s) => s.clinician);
+  const clinician = useClinical((s) => s.clinician);
+  const { bedId = "4" } = useParams();
+  const bedRec = useClinical((s) => s.beds[bedId]);
+  const missing = bedRec?.profile
+    ? missingRecommended(
+        bedRec.profile,
+        bedRec.references.some((r) => !r.removed),
+      )
+    : [];
+  const missingLabels: Record<RecommendedField, string> = {
+    admission: t.entry.admission,
+    rass: t.entry.rass,
+    cam: t.entry.cam,
+    reference: t.entry.reference,
+    medications: t.entry.medications,
+    conditions: t.entry.conditions,
+  };
   const theme = usePrefs((s) => s.theme);
   const cycleTheme = usePrefs((s) => s.cycleTheme);
   const lang = usePrefs((s) => s.lang);
   const toggleLang = usePrefs((s) => s.toggleLang);
   const { bedId = '4' } = useParams();
-  const location = useLocation();
-  const isUnit = location.pathname.startsWith('/unit');
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
-  const ThemeIcon = theme === 'projector' ? Moon : theme === 'night' ? Sun : Contrast;
-  const rejected = view.status === 'REJECTED';
+  const ThemeIcon =
+    theme === "projector" ? Moon : theme === "night" ? Sun : Contrast;
+  const rejected = view.status === "REJECTED";
 
   const navItem = (active: boolean) =>
     cn(
-      'nowrap inline-flex h-11 items-center rounded-full px-3 text-md font-medium transition-colors duration-150 compact:h-9 compact:px-3.5 compact:text-base',
-      active ? 'bg-pill-active font-semibold text-pill-active-fg' : 'text-text-2 hover:bg-subtle hover:text-ink',
+      "nowrap inline-flex h-11 items-center rounded-full px-3 text-md font-medium transition-colors duration-150 compact:h-9 compact:px-3.5 compact:text-base",
+      active
+        ? "bg-pill-active font-semibold text-pill-active-fg"
+        : "text-text-2 hover:bg-subtle hover:text-ink",
     );
 
   return (
     <header className="flex h-18 shrink-0 items-center justify-between gap-4 px-8 compact:h-15 compact:gap-2 compact:px-4">
       <div className="flex min-w-0 items-center gap-4 compact:gap-2">
         <Wordmark compact={false} className="compact:[&>span:last-child]:hidden" />
-        {!isUnit && (
-          <span
-            className="nowrap inline-flex h-10 min-w-0 items-center gap-1.5 rounded-full border-theme border-card-border bg-card px-3.5 text-base hc:border-ink"
-            aria-label={t.header.patient(view.patient.ref, view.patient.bed)}
-            title={`${view.patient.ref} · ${t.header.bed(view.patient.bed)} · ${l(view.patient.setting)} · ${l(view.patient.day)}`}
-          >
-            <span className="font-bold">{view.patient.ref}</span>
-            <span className="truncate text-text-2">
-              · {t.header.bed(view.patient.bed)}
-              <span className="compact:hidden">
-                {' '}· {l(view.patient.setting)} · {l(view.patient.day)}
-              </span>
+        <span
+          className="nowrap inline-flex h-10 min-w-0 items-center gap-1.5 rounded-full border-theme border-card-border bg-card px-3.5 text-base hc:border-ink"
+          aria-label={t.header.patient(view.patient.ref, view.patient.bed)}
+          title={`${view.patient.ref} · ${t.header.bed(view.patient.bed)} · ${l(view.patient.setting)} · ${l(view.patient.day)}`}
+        >
+          <span className="font-bold">{view.patient.ref}</span>
+          <span className="truncate text-text-2">
+            · {t.header.bed(view.patient.bed)}
+            <span className="compact:hidden">
+              {' '}· {l(view.patient.setting)} · {l(view.patient.day)}
             </span>
           </span>
-        )}
+        </span>
       </div>
 
       <nav aria-label={t.header.main} className="shrink-0">
@@ -69,22 +86,32 @@ export function Header() {
             </NavLink>
           </li>
           <li>
-            <NavLink to={`/bed/${bedId}/monitor`} className={({ isActive }) => navItem(isActive)} end>
+            <NavLink
+              to={`/bed/${bedId}/monitor`}
+              className={({ isActive }) => navItem(isActive)}
+              end
+            >
               {t.nav.monitor}
             </NavLink>
           </li>
           <li>
-            <NavLink to={`/bed/${bedId}/timeline`} className={({ isActive }) => navItem(isActive)}>
+            <NavLink
+              to={`/bed/${bedId}/timeline`}
+              className={({ isActive }) => navItem(isActive)}
+            >
               {t.nav.timeline}
             </NavLink>
           </li>
           <li>
-            <NavLink to={`/bed/${bedId}/assessments`} className={({ isActive }) => navItem(isActive)}>
+            <NavLink
+              to={`/bed/${bedId}/assessments`}
+              className={({ isActive }) => navItem(isActive)}
+            >
               {t.nav.assessments}
             </NavLink>
           </li>
           <li>
-            <NavLink to={`/bed/${bedId}/audit`} className={({ isActive }) => navItem(isActive)}>
+            <button type="button" aria-pressed={panel === 'audit'} onClick={() => setPanel(panel === 'audit' ? null : 'audit')} className={navItem(false)}>
               {t.nav.audit}
             </NavLink>
           </li>
@@ -92,9 +119,14 @@ export function Header() {
       </nav>
 
       <div className="flex shrink-0 items-center gap-2 compact:gap-1.5">
-        <Popover open={pendingMode !== null} onOpenChange={(o) => !o && setPendingMode(null)}>
+        <Popover
+          open={pendingMode !== null}
+          onOpenChange={(o) => !o && setPendingMode(null)}
+        >
           <PopoverAnchor asChild>
-            <div className={cn(rejected && '[&_p]:hidden', 'compact:[&_p]:hidden')}>
+            <div
+              className={cn(rejected && "[&_p]:hidden", "compact:[&_p]:hidden")}
+            >
               <ModeControl mode={view.mode} onRequest={setPendingMode} />
             </div>
           </PopoverAnchor>
@@ -113,20 +145,41 @@ export function Header() {
         </Popover>
 
         {rejected ? (
-          <StatusPill tone="slate" icon={<NoSignalIcon className="h-[18px] w-[18px]" />} className="compact:hidden">
+          <StatusPill
+            tone="slate"
+            icon={<NoSignalIcon className="h-[18px] w-[18px]" />}
+            className="compact:hidden"
+          >
             {t.header.assessmentUnavailable}
           </StatusPill>
         ) : null}
 
         <ConnectionPill kind={view.connection} />
         <span className="compact:hidden">
-          <BaselinePill state={view.baseline} />
+          <BaselinePill
+            state={view.baseline}
+            provisional={
+              view.baselineQuality === "provisional" &&
+              view.baseline === "adaptive"
+            }
+          />
         </span>
 
-        <Button variant="icon" size="icon" aria-label={t.header.theme(t.themes[theme])} onClick={cycleTheme}>
+        <Button
+          variant="icon"
+          size="icon"
+          aria-label={t.header.theme(t.themes[theme])}
+          onClick={cycleTheme}
+        >
           <ThemeIcon aria-hidden size={20} strokeWidth={1.75} />
         </Button>
-        <Button variant="icon" size="icon" aria-label={t.header.language} onClick={toggleLang} className="text-base font-bold">
+        <Button
+          variant="icon"
+          size="icon"
+          aria-label={t.header.language}
+          onClick={toggleLang}
+          className="text-base font-bold"
+        >
           {lang.toUpperCase()}
         </Button>
         <HelpButton />
@@ -147,7 +200,12 @@ function HelpButton() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="icon" size="icon" aria-label={t.header.help} className="text-lg font-bold">
+        <Button
+          variant="icon"
+          size="icon"
+          aria-label={t.header.help}
+          className="text-lg font-bold"
+        >
           <span aria-hidden>?</span>
         </Button>
       </PopoverTrigger>
@@ -157,7 +215,9 @@ function HelpButton() {
           {t.header.shortcutList.map(([k, v]) => (
             <div key={k} className="contents">
               <dt>
-                <kbd className="nowrap rounded-[6px] border border-card-border bg-subtle px-1.5 py-0.5 font-sans text-xs font-semibold hc:border-ink">{k}</kbd>
+                <kbd className="nowrap rounded-[6px] border border-card-border bg-subtle px-1.5 py-0.5 font-sans text-xs font-semibold hc:border-ink">
+                  {k}
+                </kbd>
               </dt>
               <dd className="text-text-2">{v}</dd>
             </div>

@@ -15,11 +15,13 @@ import { useFormat, useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { fmtTime } from '@/lib/time';
 import { useMonitor } from '@/store/monitor';
+import { useView } from '@/features/monitor/useView';
 import { Segmented } from '@/components/ui/Segmented';
 import { Switch } from '@/components/ui/Form';
 import { AbstentionGlyph, AlertTriangleGlyph, DiamondGlyph } from '@/components/clinical/TimelineMarkers';
 import type { TimelineView } from '@/contracts/monitor';
 import { useCompact } from '@/features/monitor/useCompact';
+import { referenceTo10 } from '@/clinical/profile';
 
 type Row = { t: number; pain: number | null; band: [number, number] | null; z: number | null };
 
@@ -43,8 +45,8 @@ export function TimelineCard({ className }: { className?: string }) {
   const t = useT();
   const l = useL10n();
   const f = useFormat();
-  const tl = useMonitor((s) => s.view.timeline);
-  const mode = useMonitor((s) => s.view.mode);
+  const tl = useView().timeline;
+  const mode = useView().mode;
   const windowMin = useMonitor((s) => s.windowMin);
   const setWindow = useMonitor((s) => s.setWindow);
   const compare = useMonitor((s) => s.compareModes);
@@ -66,7 +68,10 @@ export function TimelineCard({ className }: { className?: string }) {
 
   const hasEvent = tl.regions.find((r) => r.kind === 'event' && r.to >= from);
   const hasAbst = tl.regions.some((r) => r.kind === 'abstention');
-  const hasRefs = tl.references.some((r) => inWin(r.t)) || !!tl.beforeWindow;
+  // Latest reference before the window → edge marker "‹ CPOT 1 · 13:58 (35 min ago, before window)" (A1).
+  const before = [...tl.references].filter((r) => r.t < from).sort((a, b) => b.t - a.t)[0];
+  const beforeWindow = before ? { scale: before.scale, value: before.value, time: fmtTime(before.t, false), agoMin: Math.round((tl.now - before.t) / 60_000) } : null;
+  const hasRefs = tl.references.some((r) => inWin(r.t)) || !!beforeWindow;
   const hasAlert = tl.alerts.some((a) => inWin(a.t));
   const ack = tl.alerts.some((a) => a.acknowledged);
   const hasCtx = tl.contextEvents.some((e) => inWin(e.t));
@@ -141,9 +146,9 @@ export function TimelineCard({ className }: { className?: string }) {
 
             {tl.regions
               .filter((r) => r.to >= from)
-              .map((r) => (
+              .map((r, i) => (
                 <ReferenceArea
-                  key={`${r.kind}-${r.from}`}
+                  key={`${r.kind}-${r.from}-${i}`}
                   yAxisId="p"
                   x1={Math.max(r.from, from)}
                   x2={Math.min(r.to, tl.now)}
@@ -163,8 +168,8 @@ export function TimelineCard({ className }: { className?: string }) {
             <Line yAxisId="z" dataKey="z" stroke={C.arousal} strokeWidth={1.75} strokeDasharray="6 4" dot={false} isAnimationActive={false} connectNulls={false} />
             <Line yAxisId="p" dataKey="pain" stroke={C.ink} strokeWidth={2.5} dot={false} isAnimationActive={false} connectNulls={false} />
 
-            {tl.contextEvents.filter((e) => inWin(e.t)).map((e) => (
-              <ReferenceLine key={`ce-${e.t}`} yAxisId="p" x={e.t} stroke={C.ink} strokeDasharray="3 3" label={<TopLabel text={l(e.label)} />} />
+            {tl.contextEvents.filter((e) => inWin(e.t)).map((e, i) => (
+              <ReferenceLine key={`ce-${e.t}-${i}`} yAxisId="p" x={e.t} stroke={C.ink} strokeDasharray="3 3" label={<TopLabel text={l(e.label)} anchorEnd={tl.now - e.t < windowMin * 60_000 * 0.25} />} />
             ))}
 
             {tl.alerts.filter((a) => inWin(a.t)).map((a) => (
@@ -183,25 +188,25 @@ export function TimelineCard({ className }: { className?: string }) {
               <ReferenceLine key={`gh-${g}`} yAxisId="p" x={g} stroke={C.text2} strokeDasharray="2 3" strokeOpacity={0.6} label={<TriangleLabel ghost text={t.timeline.wouldAlert(otherMode)} />} />
             ))}
 
-            {tl.references.filter((r) => inWin(r.t)).map((r) => (
+            {tl.references.filter((r) => inWin(r.t)).map((r, i) => (
               <ReferenceDot
-                key={`ref-${r.t}`}
+                key={`ref-${r.t}-${i}`}
                 yAxisId="p"
                 x={r.t}
-                y={Math.min(10, r.scale === 'CPOT' ? (r.value * 10) / 8 : r.scale === 'BPS' ? ((r.value - 3) * 10) / 9 : r.value)}
+                y={Math.min(10, referenceTo10(r.scale, r.value))}
                 shape={<Diamond label={`${r.scale} ${r.value} · ${fmtTime(r.t)}`} />}
               />
             ))}
 
-            {tl.beforeWindow && rows[0] ? (
+            {beforeWindow && rows[0] ? (
               <ReferenceDot
                 yAxisId="p"
                 x={rows[0].t}
-                y={Math.min(10, (tl.beforeWindow.value * 10) / 8)}
+                y={Math.min(10, referenceTo10(beforeWindow.scale, beforeWindow.value))}
                 shape={
                   <Diamond
                     edge
-                    label={`‹ ${t.timeline.beforeWindow(tl.beforeWindow.scale, tl.beforeWindow.value, tl.beforeWindow.time, tl.beforeWindow.agoMin)}`}
+                    label={`‹ ${t.timeline.beforeWindow(beforeWindow.scale, beforeWindow.value, beforeWindow.time, beforeWindow.agoMin)}`}
                   />
                 }
               />
@@ -305,10 +310,11 @@ function RegionLabel({ viewBox, text, kind }: LabelProps & { text: string; kind:
   );
 }
 
-function TopLabel({ viewBox, text }: LabelProps & { text: string }) {
+function TopLabel({ viewBox, text, anchorEnd }: LabelProps & { text: string; anchorEnd?: boolean }) {
   const { x = 0, y = 0 } = viewBox ?? {};
+  // near the right edge the label sits to the left of its line so it never leaves the plot
   return (
-    <text x={x + 6} y={y + 12} fontSize={13} fontWeight={600} fill={C.ink}>
+    <text x={anchorEnd ? x - 6 : x + 6} y={y + 12} textAnchor={anchorEnd ? 'end' : 'start'} fontSize={13} fontWeight={600} fill={C.ink}>
       {text}
     </text>
   );
