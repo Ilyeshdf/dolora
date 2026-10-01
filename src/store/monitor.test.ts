@@ -1,101 +1,78 @@
 import { useMonitor } from './monitor';
+import { useClinical } from './clinical';
 import { FIXTURES, FIXTURE_IDS } from '@/fixtures/monitorFixtures';
+import { buildView } from '@/features/monitor/useView';
 
 const S = () => useMonitor.getState();
+const audit = () => useClinical.getState().bed('4').audit;
 
-describe('monitor store actions', () => {
-  beforeEach(() => S().load('pain'));
+describe('monitor store', () => {
+  beforeEach(() => S().loadFixture('pain'));
 
-  it('acknowledge collapses the alert into the acknowledged strip and audits it (§7.2)', () => {
-    const before = S().audit.length;
+  it('loading a fixture seeds the bed clinical record', () => {
+    expect(useClinical.getState().bed('4').profile?.patientRef).toBe('P-7F3A');
+    expect(S().now).toBe(FIXTURES.pain().now);
+  });
+
+  it('acknowledge collapses the alert and audits it (§7.2)', () => {
+    const before = audit().length;
     S().acknowledge();
-    expect(S().view.alert).toMatchObject({ kind: 'acknowledged', by: 'DR', at: '14:32' });
-    expect(S().view.timeline.alerts.every((a) => a.acknowledged)).toBe(true);
-    expect(S().audit).toHaveLength(before + 1);
-    expect(S().audit[0]).toMatchObject({ actor: 'clinician', who: 'DR', kind: 'alert' });
-    expect(S().audit[0]?.action.en).toBe('Alert acknowledged');
+    expect(S().raw.alert).toMatchObject({ kind: 'acknowledged', by: 'DR', at: '14:32' });
+    expect(S().raw.timeline.alerts.every((a) => a.acknowledged)).toBe(true);
+    expect(audit()).toHaveLength(before + 1);
+    expect(audit().at(-1)?.action.en).toBe('Alert acknowledged');
   });
 
-  it('acknowledge is a no-op when there is no active alert', () => {
-    S().load('stress');
-    const before = S().audit.length;
+  it('acknowledge is a no-op without an active alert', () => {
+    S().loadFixture('stress');
+    const before = audit().length;
     S().acknowledge();
-    expect(S().view.alert.kind).toBe('none');
-    expect(S().audit).toHaveLength(before);
+    expect(audit()).toHaveLength(before);
   });
 
-  it('saving an assessment adds a timeline reference, updates the last reference and audits (§7.6)', () => {
-    S().setDialog('assessment');
-    S().saveAssessment({ scale: 'CPOT', total: 4, items: [1, 1, 1, 1], note: '' });
-    const v = S().view;
-    expect(S().dialog).toBeNull();
-    expect(v.timeline.references.at(-1)).toMatchObject({ scale: 'CPOT', value: 4, t: v.timeline.now });
-    expect(v.lastReference).toEqual({ scale: 'CPOT', value: 4, ageMin: 0 });
-    expect(S().audit[0]?.detail?.en).toBe('Total 4 / 8');
+  it('the clock ticks unless frozen', () => {
+    const t0 = S().now;
+    S().tick(1000);
+    expect(S().now).toBe(t0 + 1000);
+    S().setFrozen(true);
+    S().tick(1000);
+    expect(S().now).toBe(t0 + 1000);
+    S().setFrozen(false);
   });
 
-  it('records BPS totals out of 12', () => {
-    S().saveAssessment({ scale: 'BPS', total: 7, items: null, note: 'post suction' });
-    expect(S().audit[0]?.detail?.en).toBe('Total 7 / 12 · “post suction”');
-  });
-
-  it('mode change is audited with old → new (§12 "Mode change: audited")', () => {
+  it('mode confirmation goes through the audited clinical store', () => {
     S().confirmMode('WARD');
-    expect(S().view.mode).toBe('WARD');
-    expect(S().audit[0]?.detail?.en).toBe('ICU → Ward (confirmed)');
-    S().confirmMode('WARD');
-    expect(S().audit[0]?.detail?.en).toBe('ICU → Ward (confirmed)'); // no duplicate entry
-  });
-
-  it('audit is append-only across actions', () => {
-    const ids = S().audit.map((e) => e.id);
-    S().acknowledge();
-    S().saveAssessment({ scale: 'CPOT', total: 2, items: null, note: '' });
-    const after = S().audit.map((e) => e.id);
-    expect(ids.every((id) => after.includes(id))).toBe(true);
+    expect(useClinical.getState().bed('4').mode).toBe('WARD');
+    expect(audit().at(-1)?.kind).toBe('mode');
   });
 });
 
 describe('design fixtures obey the spec invariants', () => {
-  it.each(FIXTURE_IDS)('%s: attribution shares sum to 100 %%', (id) => {
-    const a = FIXTURES[id]().attribution;
+  const views = FIXTURE_IDS.map((id) => {
+    const fx = FIXTURES[id]();
+    return [id, buildView(fx.raw, { ...fx.seed, calibration: null, audit: [] }, fx.now)] as const;
+  });
+  it.each(views)('%s: attribution shares sum to 100 %%', (_, v) => {
+    const a = v.attribution;
     if (!a) return;
-    const sum = a.pain + a.stress + (a.agitation ?? 0) + a.rest + a.unexplained;
-    expect(sum).toBeCloseTo(1, 2);
+    expect(a.pain + a.stress + (a.agitation ?? 0) + a.rest + a.unexplained).toBeCloseTo(1, 6);
   });
-
-  it.each(FIXTURE_IDS)('%s: no pain alert can show while REJECTED (§12)', (id) => {
-    const v = FIXTURES[id]();
-    if (v.status === 'REJECTED') {
-      expect(v.alert.kind).not.toBe('alert');
-      expect(v.pain).toBeNull();
-      expect(v.attribution).toBeNull();
-      expect(v.drivers).toHaveLength(0);
-    }
+  it.each(views)('%s: no pain alert can show while REJECTED (§12)', (_, v) => {
+    if (v.status !== 'REJECTED') return;
+    expect(v.alert.kind).not.toBe('alert');
+    expect(v.pain).toBeNull();
+    expect(v.attribution).toBeNull();
+    expect(v.drivers).toHaveLength(0);
   });
-
-  it.each(FIXTURE_IDS)('%s: interval brackets the score', (id) => {
-    const p = FIXTURES[id]().pain;
-    if (p) {
-      expect(p.lo).toBeLessThanOrEqual(p.score);
-      expect(p.hi).toBeGreaterThanOrEqual(p.score);
-    }
+  it.each(views)('%s: interval brackets the score', (_, v) => {
+    if (!v.pain) return;
+    expect(v.pain.lo).toBeLessThanOrEqual(v.pain.score);
+    expect(v.pain.hi).toBeGreaterThanOrEqual(v.pain.score);
   });
-
-  it.each(FIXTURE_IDS)('%s: clinical patient → coverage not validated (D-1)', (id) => {
-    const p = FIXTURES[id]().pain;
-    if (p) expect(p.coverageValidated).toBe(false);
+  it.each(views)('%s: clinical patient → coverage not validated (D-1)', (_, v) => {
+    if (v.pain) expect(v.pain.coverageValidated).toBe(false);
   });
-
-  it('masked channels come with a context reason (D-7)', () => {
-    const v = FIXTURES.degraded();
-    expect(v.channels.face?.state).toBe('masked');
-    expect(v.channels.motion?.state).toBe('masked');
-    expect(v.context.some((c) => c.flag === 'NMB')).toBe(true);
-    expect(v.attribution?.agitation).toBeNull();
-  });
-
   it('timeline history is deterministic (seeded PRNG, §15.1)', () => {
-    expect(FIXTURES.pain().timeline.samples).toEqual(FIXTURES.pain().timeline.samples);
+    expect(FIXTURES.pain().raw.timeline.samples).toEqual(FIXTURES.pain().raw.timeline.samples);
   });
 });

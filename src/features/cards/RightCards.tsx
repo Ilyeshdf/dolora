@@ -3,6 +3,7 @@ import { ArrowUpRight, Info } from 'lucide-react';
 import { useFormat, useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { useMonitor } from '@/store/monitor';
+import { useView } from '@/features/monitor/useView';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -33,11 +34,11 @@ function CardHeading({ title, subtitle, help, id }: { title: string; subtitle?: 
 /** "What is driving the arousal?" — explains WHY the arousal is attributed (Head B, D-5). */
 export function AttributionCard({ className }: { className?: string }) {
   const t = useT();
-  const view = useMonitor((s) => s.view);
+  const view = useView();
   return (
     <Card padding="none" aria-labelledby="attr-title" className={cn('px-6 pb-6 pt-7 compact:px-5 compact:pb-3 compact:pt-4', className)} role="region">
       <CardHeading id="attr-title" title={t.attribution.title} help={t.cards.attributionHelp} />
-      <AttributionBar className="mt-4" shares={view.attribution} agitationLabel={view.mode === 'WARD' ? 'activity' : 'agitation'} />
+      <AttributionBar className="mt-4" shares={view.attribution} emptyText={view.calibrating ? t.attribution.emptyCalibrating : undefined} agitationLabel={view.mode === 'WARD' ? 'activity' : 'agitation'} />
     </Card>
   );
 }
@@ -47,8 +48,9 @@ export function DriversCard({ className, forceTooltip }: { className?: string; f
   const t = useT();
   const l = useL10n();
   const f = useFormat();
-  const drivers = useMonitor((s) => s.view.drivers);
-  const notAttributed = useMonitor((s) => !!s.view.pain?.notAttributed);
+  const drivers = useView().drivers;
+  const calibrating = !!useView().calibrating;
+  const notAttributed = !!useView().pain?.notAttributed;
   const highlight = useMonitor((s) => s.highlight);
   const sensorHighlight = useMonitor((s) => s.sensorHighlight);
   const setHighlight = useMonitor((s) => s.setHighlight);
@@ -63,8 +65,8 @@ export function DriversCard({ className, forceTooltip }: { className?: string; f
           <span className="grid h-13 w-13 place-items-center rounded-full bg-track hc:border-2 hc:border-ink compact:hidden">
             <NoSignalIcon className="h-6 w-6 text-text-2" />
           </span>
-          <p className="text-lg font-semibold">{t.drivers.emptyTitle}</p>
-          <p className="text-sm leading-5 text-text-2">{t.drivers.emptyBody}</p>
+          <p className="text-lg font-semibold">{calibrating ? t.entry.calibration.availableAfter : t.drivers.emptyTitle}</p>
+          <p className="text-sm leading-5 text-text-2">{calibrating ? t.entry.calibration.driversBody : t.drivers.emptyBody}</p>
         </div>
       ) : (
         <ul className="mt-2.5 flex min-h-0 flex-col gap-1 compact:mt-1 compact:gap-0 compact:overflow-y-auto">
@@ -103,7 +105,7 @@ export function DriversCard({ className, forceTooltip }: { className?: string; f
 export function LiveSignalsCard({ className }: { className?: string }) {
   const t = useT();
   const l = useL10n();
-  const telemetry = useMonitor((s) => s.view.telemetry);
+  const telemetry = useView().telemetry;
   const navigate = useNavigate();
   const { bedId = '4' } = useParams();
   const name = { ppg: t.sensors.ppg, eda: t.sensors.eda, temp: t.telemetry.skinTemp, motion: t.sensors.motion };

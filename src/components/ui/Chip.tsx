@@ -73,7 +73,7 @@ export const AddChip = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBu
         {...props}
       >
         <Plus aria-hidden size={18} strokeWidth={1.75} />
-        {children ?? t.chips.addContext}
+        <span className="compact:sr-only">{children ?? t.chips.addContext}</span>
       </button>
     );
   },

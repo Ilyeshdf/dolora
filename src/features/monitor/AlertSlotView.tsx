@@ -1,7 +1,9 @@
 import { Activity, ClipboardList } from 'lucide-react';
 import { useL10n, useT } from '@/i18n';
 import { useMonitor } from '@/store/monitor';
+import { useView } from '@/features/monitor/useView';
 import { AlertSlot } from '@/components/ui/AlertSlot';
+import { fmtCountdown } from '@/lib/time';
 import { Button } from '@/components/ui/Button';
 
 /**
@@ -12,10 +14,10 @@ import { Button } from '@/components/ui/Button';
 export function AlertSlotView() {
   const t = useT();
   const l = useL10n();
-  const alert = useMonitor((s) => s.view.alert);
+  const alert = useView().alert;
   const acknowledge = useMonitor((s) => s.acknowledge);
   const setDialog = useMonitor((s) => s.setDialog);
-  const openAssessment = () => setDialog('assessment');
+  const openAssessment = () => setDialog('assessment', null);
 
   let slot;
   let announce = '';
@@ -40,6 +42,9 @@ export function AlertSlotView() {
         />
       );
       break;
+    case 'calibrating':
+      slot = <AlertSlot variant="info" title={t.entry.calibration.strip} right={<span className="nowrap text-md font-medium">{t.alertSlot.remaining(fmtCountdown(alert.remainingS))}</span>} />;
+      break;
     case 'acknowledged':
       slot = <AlertSlot variant="acknowledged" title={t.alertSlot.acknowledgedBy(alert.by, alert.at)} />;
       break;
@@ -58,13 +63,18 @@ export function AlertSlotView() {
             }
           />
         );
+      } else if (alert.advisory === 'WASHOUT') {
+        slot = <AlertSlot variant="advisory" title={t.entry.washout(fmtCountdown(alert.remainingS ?? 0))} />;
+      } else if (alert.advisory === 'GLUCOSE') {
+        announce = t.entry.glucose;
+        slot = <AlertSlot variant="advisory" title={t.entry.glucose} />;
       } else {
-        announce = t.alertSlot.unavailable;
+        announce = alert.advisory === 'UNASSESSABLE' ? t.entry.unassessableTitle : t.alertSlot.unavailable;
         slot = (
           <AlertSlot
             variant="advisory"
             icon="clipboard"
-            title={t.alertSlot.unavailable}
+            title={alert.advisory === 'UNASSESSABLE' ? t.entry.unassessableTitle : t.alertSlot.unavailable}
             right={
               <Button variant="advisory" size="none" className="h-10 px-5 text-md" onClick={openAssessment}>
                 <ClipboardList aria-hidden size={18} strokeWidth={1.75} />

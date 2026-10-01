@@ -8,6 +8,8 @@ import type { AttributionShares } from '@/components/clinical/AttributionBar';
 import type { Route } from '@/components/ui/RouteIcon';
 import type { Mode, ConnectionKind, BaselineState } from '@/components/clinical/HeaderPills';
 import type { HotspotState } from '@/components/clinical/SensorHotspot';
+import type { FlagId } from '@/clinical/clinicalEffects';
+import type { EffectSet } from '@/engine/effects';
 
 /** Engine-supplied text arrives in both languages (spec §5.1 `text_en` / `text_fr`). */
 export interface L10n {
@@ -19,7 +21,11 @@ export type Status = 'OK' | 'DEGRADED' | 'REJECTED';
 export type SensorId = 'face' | 'ppg' | 'eda' | 'temp' | 'motion' | 'breathing';
 
 export interface ContextItem {
-  flag: string;
+  flag: FlagId;
+  /** Where the chip comes from: a context entry, a logged event, or a profile field. */
+  source: 'context' | 'event' | 'profile';
+  entryId?: string;
+  startedAt?: number;
   label: L10n;
   route: Route;
   kind: 'persistent' | 'timed';
@@ -33,7 +39,8 @@ export type AlertView =
   | { kind: 'none' }
   | { kind: 'alert'; id: string; rule: L10n; since: string; elapsed: string }
   | { kind: 'acknowledged'; id: string; by: string; at: string }
-  | { kind: 'advisory'; advisory: 'NMB' | 'UNAVAILABLE' };
+  | { kind: 'calibrating'; remainingS: number }
+  | { kind: 'advisory'; advisory: 'NMB' | 'UNAVAILABLE' | 'UNASSESSABLE' | 'WASHOUT' | 'GLUCOSE'; remainingS?: number };
 
 export interface PainView {
   score: number;
@@ -121,4 +128,12 @@ export interface MonitorView {
   telemetry: TelemetryView[];
   timeline: TimelineView;
   lastReference: { scale: 'CPOT' | 'BPS' | 'NRS'; value: number; ageMin: number } | null;
+  /** Quality of the last marked baseline (task §3.2-F). */
+  baselineQuality: 'good' | 'provisional' | null;
+  /** Clinical-context effects currently applied (footer chips, summaries, tests). */
+  effects: EffectSet;
+  calibrating: { remainingS: number; totalS: number } | null;
+  /** Abstain reason code when REJECTED by context (spec §5.3). */
+  contextUnassessable: boolean;
+  now: number;
 }

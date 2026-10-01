@@ -2,7 +2,10 @@
  * English dictionary — the canonical shape. `fr.ts` must satisfy `Dict`, so a missing
  * French string is a type error. Interpolated strings are functions.
  */
+import { entryEn } from './entry.en';
+
 export const en = {
+  entry: entryEn,
   app: {
     name: 'ALGOS‑Δ',
     disclaimer:
@@ -85,6 +88,9 @@ export const en = {
     today: 'Today',
     empty: 'No entries for this filter.',
     appendOnly: 'Entries are append-only and are never deleted.',
+    entered: (time: string) => `entered ${time}`,
+    changedTo: 'changed to',
+    reason: (r: string) => `Reason: ${r}`,
   },
   routes: {
     prior: 'Prior',

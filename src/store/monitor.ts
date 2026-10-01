@@ -1,159 +1,149 @@
+/**
+ * Monitor store — the active bed's RAW engine output, the clock, and screen UI state.
+ * The displayed view is derived (raw + clinical context + now) by `useView()`; clinical data
+ * lives in `useClinical`. Phase 4 replaces the fixture/rest raw source by the live adapter or
+ * the simulator without touching this split.
+ */
 import { create } from 'zustand';
-import type { L10n, MonitorView, SensorId } from '@/contracts/monitor';
 import type { Mode } from '@/components/clinical/HeaderPills';
-import { A6_AUDIT, FIXTURES, type FixtureId } from '@/fixtures/monitorFixtures';
-import { fmtTime } from '@/lib/time';
+import type { RawState } from '@/contracts/engine';
+import type { L10n, SensorId } from '@/contracts/monitor';
+import { FIXTURES, restRaw, type FixtureId } from '@/fixtures/monitorFixtures';
+import { useClinical } from './clinical';
+import type { RefScale } from '@/clinical/profile';
 
-export type AuditKind = 'alert' | 'context' | 'assessment' | 'mode' | 'system' | 'baseline';
-
-export interface AuditEntry {
-  id: string;
-  t: number;
-  actor: 'clinician' | 'system';
-  who?: string;
-  kind: AuditKind;
-  action: L10n;
-  detail?: L10n;
-}
-
-export interface AssessmentInput {
-  scale: 'CPOT' | 'BPS';
-  total: number;
-  items: number[] | null;
-  note: string;
-}
-
-type Panel = 'audit' | null;
+type Panel = 'audit' | 'profile' | null;
 type Dialog = 'assessment' | null;
 
 interface MonitorState {
-  fixture: FixtureId;
-  view: MonitorView;
-  audit: AuditEntry[];
+  bedId: string;
+  fixture: FixtureId | null;
+  raw: RawState;
+  /** Wall-clock of the bed (fixture time + elapsed). */
+  now: number;
+  frozen: boolean;
   panel: Panel;
+  /** Section to open in the profile drawer. */
+  profileSection: string | null;
   dialog: Dialog;
-  /** Driver id highlighted by hover/focus — links driver row ↔ body hotspot (§11.1). */
+  dialogScale: RefScale | null;
   highlight: string | null;
   sensorHighlight: SensorId | null;
   windowMin: 5 | 10 | 30;
   compareModes: boolean;
   rail: { labels: boolean; drivers: boolean; back: boolean; zoom: boolean };
-  clinician: string;
+  addContextOpen: boolean;
+  baselineOpen: boolean;
+  paletteOpen: boolean;
 
-  load: (f: FixtureId) => void;
-  setPanel: (p: Panel) => void;
-  setDialog: (d: Dialog) => void;
+  loadFixture: (f: FixtureId) => void;
+  openBed: (bed: string, now: number) => void;
+  tick: (ms: number) => void;
+  setFrozen: (f: boolean) => void;
+  setPanel: (p: Panel, section?: string | null) => void;
+  setDialog: (d: Dialog, scale?: RefScale | null) => void;
   setHighlight: (id: string | null, sensor?: SensorId | null) => void;
   setWindow: (m: 5 | 10 | 30) => void;
   setCompare: (on: boolean) => void;
   toggleRail: (k: keyof MonitorState['rail']) => void;
+  setAddContextOpen: (o: boolean) => void;
+  setBaselineOpen: (o: boolean) => void;
+  setPaletteOpen: (o: boolean) => void;
   acknowledge: () => void;
-  saveAssessment: (a: AssessmentInput) => void;
   confirmMode: (m: Mode) => void;
 }
 
 const L = (en: string, fr: string): L10n => ({ en, fr });
-let seq = 0;
-const nextId = () => `au-${++seq}`;
+const fmtHM = (t: number) => {
+  const d = new Date(t);
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+};
 
-function initialAudit(): AuditEntry[] {
-  // A6 shows the trail for the A1 session; every fixture starts from it (audit is append-only).
-  return A6_AUDIT.filter((e) => !(e.kind === 'alert' && e.actor === 'clinician')).map((e) => ({
-    id: nextId(),
-    t: e.t,
-    actor: e.actor,
-    who: 'who' in e ? e.who : undefined,
-    kind: e.kind,
-    action: e.action,
-    detail: e.detail,
-  }));
-}
+const first = FIXTURES.pain();
 
 export const useMonitor = create<MonitorState>((set, get) => ({
+  bedId: '4',
   fixture: 'pain',
-  view: FIXTURES.pain(),
-  audit: initialAudit(),
+  raw: first.raw,
+  now: first.now,
+  frozen: false,
   panel: null,
+  profileSection: null,
   dialog: null,
+  dialogScale: null,
   highlight: null,
   sensorHighlight: null,
   windowMin: 10,
   compareModes: false,
   rail: { labels: true, drivers: true, back: false, zoom: false },
-  clinician: 'DR',
+  addContextOpen: false,
+  baselineOpen: false,
+  paletteOpen: false,
 
-  load: (fixture) => set({ fixture, view: FIXTURES[fixture](), audit: initialAudit(), highlight: null, sensorHighlight: null }),
-  setPanel: (panel) => set({ panel }),
-  setDialog: (dialog) => set({ dialog }),
+  loadFixture: (f) => {
+    const fx = FIXTURES[f]();
+    useClinical.getState().seedBed('4', fx.seed);
+    set({ bedId: '4', fixture: f, raw: fx.raw, now: fx.now, highlight: null, sensorHighlight: null });
+  },
+
+  /** Beds without a design fixture (newly admitted) run on calm resting values (Phase 4: simulator). */
+  openBed: (bed, now) => {
+    const b = useClinical.getState().bed(bed);
+    const p = b.profile;
+    set({
+      bedId: bed,
+      fixture: null,
+      now,
+      // no history before admission: the series starts when calibration starts
+      raw: restRaw({ ref: p?.patientRef ?? '—', bed: Number(bed), setting: L('ICU', 'Réa'), day: L('Just admitted', 'Juste admis') }, now, null, b.calibration?.startedAt ?? now),
+      highlight: null,
+      sensorHighlight: null,
+    });
+  },
+
+  tick: (ms) => {
+    if (get().frozen) return;
+    const now = get().now + ms;
+    set({ now });
+    // calibration completes on its own (A9 → monitoring)
+    const { bedId } = get();
+    const c = useClinical.getState().bed(bedId).calibration;
+    if (c && !c.completed && now >= c.startedAt + c.durationS * 1000) useClinical.getState().completeCalibration(bedId, c.startedAt + c.durationS * 1000);
+  },
+  setFrozen: (frozen) => set({ frozen }),
+  setPanel: (panel, section = null) => set({ panel, profileSection: section }),
+  setDialog: (dialog, scale = null) => set({ dialog, dialogScale: scale }),
   setHighlight: (highlight, sensor = null) => set({ highlight, sensorHighlight: sensor }),
   setWindow: (windowMin) => set({ windowMin }),
   setCompare: (compareModes) => set({ compareModes }),
   toggleRail: (k) => set((s) => ({ rail: { ...s.rail, [k]: !s.rail[k] } })),
+  setAddContextOpen: (addContextOpen) => set({ addContextOpen }),
+  setBaselineOpen: (baselineOpen) => set({ baselineOpen }),
+  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
 
   acknowledge: () => {
-    const { view, clinician } = get();
-    if (view.alert.kind !== 'alert') return;
-    const t = view.timeline.now;
-    const at = fmtTime(t, false);
+    const { raw, now, bedId } = get();
+    if (raw.alert.kind !== 'alert') return;
+    const clinician = useClinical.getState().clinician;
     set({
-      view: {
-        ...view,
-        alert: { kind: 'acknowledged', id: view.alert.id, by: clinician, at },
-        timeline: { ...view.timeline, alerts: view.timeline.alerts.map((a) => ({ ...a, acknowledged: true })) },
+      raw: {
+        ...raw,
+        alert: { kind: 'acknowledged', id: raw.alert.id, by: clinician, at: fmtHM(now) },
+        timeline: { ...raw.timeline, alerts: raw.timeline.alerts.map((a) => ({ ...a, acknowledged: true })) },
       },
-      audit: [
-        { id: nextId(), t, actor: 'clinician', who: clinician, kind: 'alert', action: L('Alert acknowledged', 'Alerte prise en compte'), detail: L('“Possible unmanaged pain”', '« Douleur possiblement non traitée »') },
-        ...get().audit,
-      ],
     });
-  },
-
-  saveAssessment: ({ scale, total, note }) => {
-    const { view, clinician } = get();
-    const t = view.timeline.now;
-    const max = scale === 'CPOT' ? 8 : 12;
-    set({
-      dialog: null,
-      view: {
-        ...view,
-        lastReference: { scale, value: total, ageMin: 0 },
-        timeline: { ...view.timeline, references: [...view.timeline.references, { t, scale, value: total }] },
-      },
-      audit: [
-        {
-          id: nextId(),
-          t,
-          actor: 'clinician',
-          who: clinician,
-          kind: 'assessment',
-          action: L(`${scale} recorded`, `${scale} enregistré`),
-          detail: L(`Total ${total} / ${max}${note ? ` · “${note}”` : ''}`, `Total ${total} / ${max}${note ? ` · « ${note} »` : ''}`),
-        },
-        ...get().audit,
-      ],
+    useClinical.getState().audit(bedId, {
+      t: now,
+      actor: 'clinician',
+      who: clinician,
+      kind: 'alert',
+      action: L('Alert acknowledged', 'Alerte prise en compte'),
+      detail: L('“Possible unmanaged pain”', '« Douleur possiblement non traitée »'),
     });
   },
 
   confirmMode: (mode) => {
-    const { view, clinician } = get();
-    if (mode === view.mode) return;
-    const name = (m: Mode) => (m === 'ICU' ? L('ICU', 'Réa') : L('Ward', 'Service'));
-    const from = name(view.mode);
-    const to = name(mode);
-    set({
-      view: { ...view, mode },
-      audit: [
-        {
-          id: nextId(),
-          t: view.timeline.now,
-          actor: 'clinician',
-          who: clinician,
-          kind: 'mode',
-          action: L('Mode changed', 'Mode modifié'),
-          detail: L(`${from.en} → ${to.en} (confirmed)`, `${from.fr} → ${to.fr} (confirmé)`),
-        },
-        ...get().audit,
-      ],
-    });
+    const { bedId, now } = get();
+    useClinical.getState().setMode(bedId, mode, now);
   },
 }));

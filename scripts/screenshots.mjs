@@ -20,13 +20,13 @@ const sizes = [
 
 /** Monitor states, each in the theme of its artboard (A2 = Night, A7 = High contrast). */
 const monitor = [
-  { id: 'A1-pain', path: '/bed/4/monitor?state=pain&hover=eda_scr_rate', theme: 'projector' },
-  { id: 'A2-stress', path: '/bed/4/monitor?state=stress', theme: 'night' },
-  { id: 'A3-abstain', path: '/bed/4/monitor?state=abstain', theme: 'projector' },
-  { id: 'A4-degraded', path: '/bed/4/monitor?state=degraded', theme: 'projector' },
-  { id: 'A5-dialog', path: '/bed/4/monitor?state=pain&dialog=assessment&prefill=a5', theme: 'projector' },
-  { id: 'A6-audit', path: '/bed/4/monitor?state=pain&panel=audit&hover=eda_scr_rate', theme: 'projector' },
-  { id: 'A7-hc', path: '/bed/4/monitor?state=pain&hover=eda_scr_rate', theme: 'hc' },
+  { id: 'A1-pain', path: '/bed/4/monitor?freeze=1&state=pain&hover=eda_scr_rate', theme: 'projector' },
+  { id: 'A2-stress', path: '/bed/4/monitor?freeze=1&state=stress', theme: 'night' },
+  { id: 'A3-abstain', path: '/bed/4/monitor?freeze=1&state=abstain', theme: 'projector' },
+  { id: 'A4-degraded', path: '/bed/4/monitor?freeze=1&state=degraded', theme: 'projector' },
+  { id: 'A5-dialog', path: '/bed/4/monitor?freeze=1&state=pain&dialog=assessment&prefill=a5', theme: 'projector' },
+  { id: 'A6-audit', path: '/bed/4/monitor?freeze=1&state=pain&panel=audit&hover=eda_scr_rate', theme: 'projector' },
+  { id: 'A7-hc', path: '/bed/4/monitor?freeze=1&state=pain&hover=eda_scr_rate', theme: 'hc' },
 ];
 const components = (only ?? ['1', '2', '3', '4', 'extras']).map((s) => ({ id: `components-${s}`, path: `/dev/components?sheet=${s}` }));
 

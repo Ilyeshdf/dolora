@@ -23,7 +23,8 @@ export const useToasts = create<ToastState>((set) => ({
   toasts: [],
   push: (t) => {
     const id = ++seq;
-    set((s) => ({ toasts: [...s.toasts, { ...t, id }] }));
+    // at most 3 on screen — older confirmations are already in the audit trail
+    set((s) => ({ toasts: [...s.toasts, { ...t, id }].slice(-3) }));
     return id;
   },
   dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) })),

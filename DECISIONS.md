@@ -282,3 +282,104 @@ The user can always switch scales.
 - any `.nowrap` label that renders on more than one line.
 
 It checks every state at 1920×1080 and 1366×768, in EN and FR and in all three themes.
+
+## Phase 3 implementation decisions (clinical data entry)
+
+**D‑51 Assumed modifiers.** Values not given by spec §4.2/§4.3 are flagged `assumption: true` in `src/clinical/clinicalEffects.ts`. They are expert priors to be validated, as the spec requires for all modifiers.
+
+| Flag | Assumed effect |
+|---|---|
+| Inotrope / β-agonist | HR 0.4, HRV 0.6, HR rise expected |
+| Propofol / benzodiazepine | face 0.7, motion 0.8 |
+| Opioid infusion | pain prior ×0.7 |
+| Vasodilator | pulse amplitude 0.6, temp 0.6 |
+| PAD / Raynaud's | pulse amplitude 0.5, temp 0.5 |
+| Hypothermia | motion 0.5, pulse amplitude 0.6, temp 0.5 |
+| Wound care | pain prior ×2, 5 min |
+| Gentle touch | pain prior ×0.7, rest ×1.3, 2 min |
+| Awakening trial | stress and agitation priors ×1.5, 20 min |
+| Surgical prior | ×1.3 thoracic / upper abdominal / trauma; ×1.2 orthopaedic / cardiac; ×1.1 neuro; first 72 h after surgery |
+| Skin problem at a site | EDA 0.6; PPG site: pulse 0.6, HR 0.8; temp site 0.7 |
+
+**D‑52 Demo composition heuristics** (`src/engine/compose.ts`). The real model applies Head A/B and conformal intervals; the demo engine applies these transparent rules:
+- **Attribution:** Saerens prior shift, then the masked class (agitation, when motion is masked) is removed and the rest renormalised. Hyperactive delirium moves 10 % of the mass to "unexplained".
+- **Score:** `head × √(p_pain / p_pain_without_context)`. The square root damps the effect.
+- **Interval:** widened by `1 + 0.3 × fully-masked sensors + 0.25 × Σ(1 − w)` over HR, pulse, EDA and temperature, capped at 2.2.
+- **Sensor state:** MASKED when any of the sensor's features has weight 0 (the note lists which, e.g. "HRV masked (AF)"). Otherwise DEGRADED when reliability (SQI × weight of the primary feature) is below 0.6. PPG's primary feature is HR.
+- **Weight badge:** shown on a driver when its feature weight is 0.6 or less.
+- **CONTEXT_UNASSESSABLE:** EDA, face and motion all masked, or EDA and HR both masked.
+- **A4 differences from the artboard, now computed from the §4.3 matrix:**
+  - A *Controlled ventilation* chip appears, because NMB implies controlled ventilation.
+  - Temperature is *degraded* (norepinephrine temp weight 0.5).
+  - PPG reliability is 0.23, not 0.28.
+  - The HR weight badge reads ×0.24, not ×0.3.
+
+**D‑53 Fixtures as raw output + context.**
+- Each design state is stored as raw engine output plus its seeded clinical context. The raw values are back-computed from the artboard numbers through the same effect set, so A1–A4 render exactly as designed and still react to new input.
+- A1's suctioning is two passes (14:30:05 and 14:32:16). This resolves the D‑44 chip-versus-band inconsistency: the chip counts down the second pass and the band spans both.
+- A2 uses an intubated, spontaneous-mode airway, matching A2's lack of a ventilation chip.
+
+**D‑54 Audit details.**
+- Profile edits are filed under the *Context* filter.
+- Retroactive entries show "entered HH:MM:SS".
+- Removals keep the record, shown struck through with the reason.
+- Undo (10 s) is an *inverse operation*, not a snapshot restore. Undoing an addition is recorded as "removed — entered in error", and undoing an edit as "Edit undone". Later unrelated edits are never reverted.
+
+**D‑55 One source for medications and conditions.**
+- They are context entries, edited from the context bar, the profile drawer and the wizard alike.
+- Choosing "None of these" sets `medsReviewed` / `conditionsReviewed`.
+- "Profile incomplete" lists the missing recommended items: admission reason, RASS, CAM-ICU, reference score, medications reviewed and conditions reviewed. It never blocks monitoring or alerts.
+
+**D‑56 Reference scales.**
+- NRS quick entry is an *NRS tab* in the same assessment dialog (one place for every reference). It has 0–10 chips and a severity label; there is no "pain likely" threshold, because self-report is the ground truth.
+- The scale offered first follows D‑14. Every assessment has an "Assessed" time picker for retroactive entry.
+- In the wizard, the latest reference is entered inline because the dialog lives on the monitor.
+- BPS counts as baseline-eligible at ≤ 4 (≈ CPOT 0–2), since BPS cannot be ≤ 2.
+
+**D‑57 Baseline checklist.**
+- **Calm:** arousal z < 1, and RASS between −2 and +1 if recorded.
+- **Low reference:** a CPOT/BPS/NRS taken within 30 min that passes D‑56.
+- **Signals OK:** status OK.
+- All three pass → "Mark as baseline" (good). Otherwise "Assess now" (when the reference is missing or stale) or "Mark as provisional baseline".
+- Marking is disabled during a vasopressor washout.
+- Finishing calibration marks a *good* baseline automatically (system entry).
+
+**D‑58 Rules beyond the two listed contradictions.**
+
+| Rule | Severity |
+|---|---|
+| NMB requires controlled ventilation | block |
+| NMB + self-report | block |
+| Fever + hypothermia | block |
+| Ward + controlled ventilation | confirm |
+| Dose change without a vasopressor | confirm |
+| CONTEXT_UNASSESSABLE before saving | confirm |
+
+The listed contradictions keep their spec severities: self-report + RASS ≤ −4 is confirm; not intubated + controlled ventilation is block. The care setting and the ICU/Ward mode commit together, only after every confirmation.
+
+**D‑59 Time entry.**
+- The bed clock ticks from the fixture time; `?freeze=1` freezes it for screenshots.
+- "Custom" time is HH:MM within the past 24 h; a time later than now means yesterday.
+- Time-of-surgery quick picks map to mid-points: < 6 h → 3 h, 6–24 h → 15 h, 1–3 days → 48 h, > 3 days → 96 h.
+
+**D‑60 Chips derived from the profile.**
+- Controlled ventilation (from airway), hyperactive delirium, and fever/hypothermia (from core temperature) appear as chips, but they're edited in the profile ("Edit in profile"), not removed from the bar.
+- The surgical prior and skin-site effects appear only in the effects footer and summaries, to keep the bar short.
+
+**D‑61 Data minimisation.**
+- There are no names, dates of birth or doses anywhere; drug class and start time only.
+- A vasopressor dose change is an event without an amount.
+- The free-text note stays on the workstation: `profileToWire` drops it from `patient_profile`.
+
+**D‑62 Command palette (Ctrl+K).**
+- Groups: Add context · Log event (now) · Update profile (jumps to a section) · Assess (CPOT/BPS, NRS) · Other (baseline, audit).
+- A "log now" command that would hit a rule warning opens the add-context flow instead, so it is never saved silently.
+
+**D‑63 Context bar density.**
+- "+ Add context" and "Log event" sit outside the scrolling chip list, so they're always reachable.
+- In compact mode they become icon-only, keeping accessible names.
+- With three or more chips the route legend hides; every chip still carries its route icon and tooltip.
+
+**D‑64 Glucose prompt.** Shown only when insulin-treated diabetes is active, the unexplained share is ≥ 0.2, arousal z ≥ 1 and tonic EDA is rising. The text recommends an *assessment* ("consider checking glucose"), never a treatment.
+
+**D‑65 Outbound bus.** `src/data/outbound.ts` records every typed message (`patient_profile`, `context_flag`, `event`, `cpot_entry` / `bps_entry` / `nrs_entry`, `mark_baseline`, `mode_change`). Phase 4 subscribes the WebSocket adapter (live) or the simulator (demo) to the same bus, and the simulator reuses `deriveEffects` + `composeView`.

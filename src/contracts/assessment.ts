@@ -8,7 +8,7 @@ import { SCALES, type ScaleId } from '@/clinical/scales';
  */
 export const assessmentSchema = z
   .object({
-    scale: z.enum(['CPOT', 'BPS']),
+    scale: z.enum(['CPOT', 'BPS', 'NRS']),
     intubated: z.boolean(),
     total: z.number().int().nullable(),
     items: z.array(z.number().int().nullable()),
@@ -16,7 +16,7 @@ export const assessmentSchema = z
   })
   .superRefine((v, ctx) => {
     const s = SCALES[v.scale as ScaleId];
-    const itemCount = v.scale === 'CPOT' ? 4 : 3;
+    const itemCount = v.scale === 'CPOT' ? 4 : v.scale === 'BPS' ? 3 : 0;
     const filled = v.items.filter((i) => i !== null) as number[];
     if (v.items.length !== itemCount) {
       ctx.addIssue({ code: 'custom', path: ['items'], message: 'itemCount' });
@@ -32,7 +32,7 @@ export const assessmentSchema = z
     if (v.total < s.min || v.total > s.max) {
       ctx.addIssue({ code: 'custom', path: ['total'], message: 'totalRange' });
     }
-    if (filled.length === itemCount && filled.reduce((a, b) => a + b, 0) !== v.total) {
+    if (itemCount > 0 && filled.length === itemCount && filled.reduce((a, b) => a + b, 0) !== v.total) {
       ctx.addIssue({ code: 'custom', path: ['total'], message: 'sumMismatch' });
     }
   });
@@ -40,7 +40,7 @@ export const assessmentSchema = z
 export type AssessmentForm = z.infer<typeof assessmentSchema>;
 
 export function emptyAssessment(scale: ScaleId, intubated: boolean): AssessmentForm {
-  return { scale, intubated, total: null, items: Array(scale === 'CPOT' ? 4 : 3).fill(null), note: '' };
+  return { scale, intubated, total: null, items: Array(scale === 'CPOT' ? 4 : scale === 'BPS' ? 3 : 0).fill(null), note: '' };
 }
 
 /** Total implied by the items, or null while incomplete. */

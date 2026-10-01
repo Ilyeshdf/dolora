@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/Toast';
 import { ComponentsPage } from '@/dev/ComponentsPage';
 import { MonitorPage } from '@/features/monitor/MonitorPage';
 import { Placeholder } from '@/features/monitor/Placeholder';
+import { AdmissionPage } from '@/features/admission/AdmissionPage';
 import { ThemeSync } from './ThemeSync';
 
 export function App() {
@@ -25,6 +26,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/dev/components" element={<ComponentsPage />} />
       <Route path="/bed/:bedId/monitor" element={<MonitorPage />} />
+      <Route path="/bed/:bedId/admit" element={<AdmissionPage />} />
       <Route path="/bed/:bedId/timeline" element={<Placeholder title={t.nav.timeline} />} />
       <Route path="/bed/:bedId/assessments" element={<Placeholder title={t.nav.assessments} />} />
       <Route path="/unit" element={<Placeholder title={t.nav.unit} />} />

@@ -5,7 +5,7 @@ import type { L10n } from '@/contracts/monitor';
  * BPS: 3 items × 1–4, total 3–12, pain likely > 5. Item 3 depends on airway:
  * intubated → ventilator compliance; extubated → vocalization.
  */
-export type ScaleId = 'CPOT' | 'BPS';
+export type ScaleId = 'CPOT' | 'BPS' | 'NRS';
 
 export interface ScaleItem {
   id: string;
@@ -18,9 +18,12 @@ const L = (en: string, fr: string): L10n => ({ en, fr });
 export const SCALES: Record<ScaleId, { min: number; max: number; threshold: number; itemMin: number; itemMax: number }> = {
   CPOT: { min: 0, max: 8, threshold: 2, itemMin: 0, itemMax: 2 },
   BPS: { min: 3, max: 12, threshold: 5, itemMin: 1, itemMax: 4 },
+  /** NRS is the patient's own report (ground truth, §1.2): no "likely" threshold — severity bands instead. */
+  NRS: { min: 0, max: 10, threshold: 3, itemMin: 0, itemMax: 10 },
 };
 
 export function scaleItems(scale: ScaleId, intubated: boolean): ScaleItem[] {
+  if (scale === 'NRS') return [];
   if (scale === 'CPOT') {
     return [
       {

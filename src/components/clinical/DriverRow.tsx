@@ -54,7 +54,7 @@ export const DriverRow = forwardRef<HTMLDivElement, DriverRowProps>(
             </p>
             {weight !== undefined ? (
               <Badge tone="weight" size="sm" className="shrink-0">
-                {t.drivers.weight(f.num(weight))}
+                {t.drivers.weight(f.num(weight, 2))}
               </Badge>
             ) : null}
             {degradedReliability !== undefined ? (

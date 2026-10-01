@@ -1,6 +1,8 @@
 import type { Dict } from './en';
+import { entryFr } from './entry.fr';
 
 export const fr: Dict = {
+  entry: entryFr,
   app: {
     name: 'ALGOS‑Δ',
     disclaimer:
@@ -83,6 +85,9 @@ export const fr: Dict = {
     today: "Aujourd'hui",
     empty: 'Aucune entrée pour ce filtre.',
     appendOnly: 'Les entrées sont uniquement ajoutées et ne sont jamais supprimées.',
+    entered: (time) => `saisi à ${time}`,
+    changedTo: 'remplacé par',
+    reason: (r) => `Motif : ${r}`,
   },
   routes: {
     prior: 'A priori',

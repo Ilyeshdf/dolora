@@ -288,3 +288,23 @@ States: A1 pain + alert · A2 Night stress (≠) · A3 abstention · A4 degraded
 - the footer fully visible, with the full disclaimer.
 
 Phase 3 adds the add-context popover, chip removal, baseline confirmation, profile drawer and command palette, which are currently styled but inert (D-49).
+
+### Phase 3 — Clinical data entry ✅
+
+| Area | Where |
+|---|---|
+| Single effects config (routes, §4.3 modifiers, priors, durations, advisories, EN/FR effect text) | `src/clinical/clinicalEffects.ts` |
+| Profile model, zod schemas, completeness, contradictions, freshness, scale choice | `src/clinical/profile.ts`, `options.ts`, `baseline.ts`, `scales.ts` |
+| Context layer (effects) + composition (view) | `src/engine/effects.ts`, `src/engine/compose.ts` |
+| Clinical store (profile, context, events, references, baseline, mode, calibration, audit, undo) | `src/store/clinical.ts` |
+| Typed outbound messages + bus | `src/contracts/messages.ts`, `src/data/outbound.ts` |
+| Admission wizard + "Profile required" | `src/features/admission/`, `src/features/monitor/ProfileRequired.tsx` |
+| Profile drawer (sections, freshness, undo, effects footer, SCI banner) | `src/features/profile/` |
+| Add context (cmdk), chip menu + removal reasons, log event, baseline checklist | `src/features/context-bar/` |
+| NRS tab + assessed-time in the assessment dialog | `src/features/cpot/AssessmentDialog.tsx` |
+| Command palette (Ctrl+K) | `src/features/palette/CommandPalette.tsx` |
+| Calibration state (A9 ring, signal check, empty states) | `src/features/monitor/Calibration.tsx` |
+| Tests | `profile.test.ts`, `effects.test.ts` (every §3.3 rule), `compose.test.ts`, `clinical.test.ts`, `entry.test.tsx` (UI flows); 170 passing |
+| E2E walkthrough | `node scripts/entry-check.mjs` (20 checks, console guard) |
+
+Every input visibly changes the monitor (task §3.4): reliability rings, masked hotspots, interval width, driver weight badges, attribution, advisories, status and timeline markers.

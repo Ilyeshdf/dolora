@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { useMonitor } from '@/store/monitor';
+import { useView } from '@/features/monitor/useView';
 import { FIXTURE_IDS, type FixtureId } from '@/fixtures/monitorFixtures';
 import { Footer } from '@/components/ui/Brand';
 import { PainHeroCard } from '@/components/clinical/PainHeroCard';
@@ -15,6 +16,11 @@ import { AttributionCard, DriversCard, LiveSignalsCard } from '@/features/cards/
 import { AssessmentDialog } from '@/features/cpot/AssessmentDialog';
 import { AuditDrawer } from '@/features/audit/AuditDrawer';
 import { AlertSlotView } from './AlertSlotView';
+import { CalibrationHero } from './Calibration';
+import { ProfileRequired } from './ProfileRequired';
+import { useClinical } from '@/store/clinical';
+import { ProfileDrawer } from '@/features/profile/ProfileDrawer';
+import { CommandPalette } from '@/features/palette/CommandPalette';
 import { useCompact } from './useCompact';
 
 /**
@@ -26,9 +32,20 @@ import { useCompact } from './useCompact';
  * fixtures in Phase 4 through the same MonitorView type.
  */
 export function MonitorPage() {
+  const { bedId = '4' } = useParams();
+  const hasProfile = useClinical((s) => !!s.beds[bedId]?.profile);
+  if (bedId !== '4' && !hasProfile) return <ProfileRequired bedId={bedId} />;
+  return <Monitor bedId={bedId} />;
+}
+
+function Monitor({ bedId }: { bedId: string }) {
   const [params] = useSearchParams();
   const compact = useCompact();
-  const load = useMonitor((s) => s.load);
+  const loadFixture = useMonitor((s) => s.loadFixture);
+  const openBed = useMonitor((s) => s.openBed);
+  const tick = useMonitor((s) => s.tick);
+  const setFrozen = useMonitor((s) => s.setFrozen);
+  const setPalette = useMonitor((s) => s.setPaletteOpen);
   const setDialog = useMonitor((s) => s.setDialog);
   const setPanel = useMonitor((s) => s.setPanel);
   const setHighlight = useMonitor((s) => s.setHighlight);
@@ -38,21 +55,50 @@ export function MonitorPage() {
   const hover = params.get('hover');
 
   useEffect(() => {
-    load(state);
-    // A4 shows the drivers layer switched off on the tool rail.
-    if (state === 'degraded' && useMonitor.getState().rail.drivers) toggleRail('drivers');
-    if (state !== 'degraded' && !useMonitor.getState().rail.drivers) toggleRail('drivers');
-  }, [state, load, toggleRail]);
+    if (bedId === '4') {
+      loadFixture(state);
+      // A4 shows the drivers layer switched off on the tool rail.
+      if (state === 'degraded' && useMonitor.getState().rail.drivers) toggleRail('drivers');
+      if (state !== 'degraded' && !useMonitor.getState().rail.drivers) toggleRail('drivers');
+    } else if (useMonitor.getState().bedId !== bedId) {
+      openBed(bedId, useMonitor.getState().now);
+    }
+  }, [bedId, state, loadFixture, openBed, toggleRail]);
+
+  // Bed clock: 1 s ticks drive countdowns, freshness and calibration (?freeze=1 for screenshots).
+  const freeze = params.get('freeze') === '1';
+  useEffect(() => {
+    setFrozen(freeze);
+    if (freeze) return;
+    const id = window.setInterval(() => tick(1000), 1000);
+    return () => window.clearInterval(id);
+  }, [freeze, setFrozen, tick]);
+
+  // Ctrl+K — command palette (task §3.1-8).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPalette(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setPalette]);
 
   useEffect(() => {
-    setDialog(params.get('dialog') === 'assessment' ? 'assessment' : null);
-    setPanel(params.get('panel') === 'audit' ? 'audit' : null);
+    const d = params.get('dialog');
+    setDialog(d === 'assessment' || d === 'nrs' ? 'assessment' : null, d === 'nrs' ? 'NRS' : null);
+    const p = params.get('panel');
+    setPanel(p === 'audit' || p === 'profile' ? p : null, params.get('section'));
   }, [params, setDialog, setPanel]);
 
+  const view = useView();
   useEffect(() => {
     if (!hover) return;
-    const d = useMonitor.getState().view.drivers.find((x) => x.id === hover);
+    const d = view.drivers.find((x) => x.id === hover);
     setHighlight(hover, d?.sensor ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per fixture/hover
   }, [hover, state, setHighlight]);
 
   // Drawer top = top of the main grid (D-27).
@@ -90,6 +136,8 @@ export function MonitorPage() {
       <Footer className="h-[41px] shrink-0 compact:h-8" />
       <AssessmentDialog prefill={params.get('prefill') === 'a5'} />
       <AuditDrawer top={mainTop} />
+      <ProfileDrawer top={mainTop} />
+      <CommandPalette />
     </div>
   );
 }
@@ -97,14 +145,16 @@ export function MonitorPage() {
 function LeftColumn({ compact }: { compact: boolean }) {
   const t = useT();
   const l = useL10n();
-  const view = useMonitor((s) => s.view);
+  const view = useView();
   const setDialog = useMonitor((s) => s.setDialog);
   const ref = view.lastReference;
   const lastRef = ref ? t.hero.lastReference(ref.scale, String(ref.value), ref.ageMin === 0 ? t.common.now.toLowerCase() : t.common.ago(t.common.minutesShort(ref.ageMin))) : null;
   const lv = view.lastValid;
   return (
     <div className="flex min-h-0 flex-col gap-[25px] compact:gap-3 compact:overflow-y-auto">
-      {view.pain ? (
+      {view.calibrating ? (
+        <CalibrationHero remainingS={view.calibrating.remainingS} totalS={view.calibrating.totalS} className="h-[478px] shrink-0 compact:h-auto" />
+      ) : view.pain ? (
         <PainHeroCard
           state="ok"
           compact={compact}
@@ -126,7 +176,7 @@ function LeftColumn({ compact }: { compact: boolean }) {
           lastValid={lv && lv.ageS <= 300 ? { score: lv.score, age: t.common.ago(t.common.secondsShort(lv.ageS)) } : null}
           reasons={view.abstainReasons.map((r) => ({ kind: r.kind, text: l(r.text) }))}
           lastReference={lastRef}
-          onPerform={() => setDialog('assessment')}
+          onPerform={() => setDialog('assessment', null)}
         />
       )}
       <ArousalPainCard
