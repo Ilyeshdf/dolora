@@ -231,3 +231,30 @@ Each phase ends with these checks: `tsc --noEmit` passes, lint passes, tests pas
 - I only have flattened images, not the `.dc.html` source. Exact spacing and type sizes are measured from 1920×1080 renders, so expect ±2 px.
 - Recharts can't easily draw the hatched abstention region or the alert triangles. I'll use custom `<Customized>` SVG layers.
 - At 1366×768 the three-column grid has to compress. Plan: the side columns shrink to 360 px, the body stage loses callout labels (hotspots stay), and the hero numeral scales from 144 px to 112 px. Nothing is hidden that carries safety meaning (alert slot, status, disclaimer).
+
+---
+
+## Phase status
+
+### Phase 1 — Design system ✅
+
+| Area | Where |
+|---|---|
+| Tokens, 3 themes, attribution palette, HC patterns | `src/styles/tokens.css`, `src/styles/globals.css`, `tailwind.config.ts` (`hc:` / `night:` variants) |
+| Primitives | `src/components/ui/`: Button, Card, Segmented, ContextChip / AddChip, CountdownRing, Badge, StatusPill, Tooltip, Toast, AlertSlot, Dialog / Sheet / Popover, form controls, Wordmark, Footer, RouteIcon / RouteLegend |
+| Clinical display components (presentational, props only) | `src/components/clinical/`: PainHeroCard, ScaleBar, SeverityPill / Tag, ArcGauge / ArousalPainCard, AttributionBar, SensorHotspot / Legend, DriverRow, TelemetryRow, timeline markers, ModeControl / ModeConfirmBody, ConnectionPill, BaselinePill |
+| i18n | `src/i18n/` (typed EN/FR, decimal comma, `LangScope`) |
+| Prefs store | `src/store/prefs.ts` (theme, language; only these are persisted) |
+| Showcase | `/dev/components?sheet=1…4\|extras` |
+| Tests | `npm test`: i18n parity, formatters, severity / arousal thresholds, red-usage guard (D-6), Segmented keyboard, ScaleBar / Attribution / Hero / AlertSlot rules, prefs, `cn` merge config |
+| Screenshots | `npm run screenshots` → `screenshots/` (1920 + 1366 × 3 themes); `node scripts/overlay-check.mjs` |
+
+Visual comparison against A8 sheets 1–4 and A1/A2/A5/A7 led to these fixes:
+- gauge arc geometry: start angle, ~200° sweep, thin outer interval arc;
+- `tailwind-merge` dropping the focus outline and HC border widths (D-16);
+- driver row layout (D-38);
+- zero shares omitted from the attribution legend;
+- telemetry trace width;
+- sheet grids stack below 1500 px instead of scrolling sideways.
+
+Components that only exist inside larger screens are built in Phase 2 on top of these primitives: the header, context bar, body map and timeline chart.

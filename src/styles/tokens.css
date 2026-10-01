@@ -1,0 +1,198 @@
+/*
+ * ALGOS-Δ design tokens — three themes.
+ * Source: design/A08-components-4 (colour tokens) + pixel samples from A1/A2/A4/A7 artboards.
+ * Values are space-separated RGB channels so Tailwind can apply alpha: rgb(var(--ink) / .5).
+ * Tokens are scoped by [data-theme] (not only :root) so a subtree can render another theme
+ * (used by /dev/components to show the three themes side by side).
+ * Assumed values (not on the token sheet) are marked "assumption" — see DECISIONS.md D-34.
+ */
+
+:root,
+[data-theme='projector'] {
+  --card-outline: 255 255 255; /* cards are borderless on the light canvas */
+  --alert-solid-fg: 198 40 40; /* text of the white 'Assess' button on the red banner */
+  --chip-icon-fg: 17 20 24;
+  --chip-timed-border: 236 220 130;
+  --page-from: 248 244 230; /* #F8F4E6 */
+  --page-to: 233 240 248; /* #E9F0F8 */
+  --card: 255 255 255;
+  --card-border: 230 233 238; /* #E6E9EE */
+  --border-w: 1px;
+  --ink: 17 20 24; /* #111418 */
+  --text-2: 63 74 86; /* #3F4A56 */
+  --muted: 94 106 119; /* #5E6A77 */
+  --pill-active: 17 20 24;
+  --pill-active-fg: 255 255 255;
+  --butter: 251 239 166; /* #FBEFA6 */
+  --sky: 220 234 251; /* #DCEAFB */
+  --action: 246 216 76; /* #F6D84C */
+  --action-fg: 17 20 24;
+  --accent: 31 95 168; /* #1F5FA8 */
+  --pain-mild: 47 143 107; /* #2F8F6B */
+  --pain-moderate: 183 121 31; /* #B7791F */
+  --pain-severe: 181 71 90; /* #B5475A */
+  --severity-fg: 255 255 255;
+  --band: 188 197 207; /* #BCC5CF */
+  --track: 238 241 245; /* sampled #EEF1F5 */
+  --alert: 198 40 40; /* #C62828 */
+  --alert-fg: 255 255 255;
+  --advisory-fill: 255 243 220; /* #FFF3DC */
+  --advisory-border: 183 121 31; /* #B7791F */
+  --advisory-text: 107 69 0; /* #6B4500 */
+  --advisory-action: 107 69 0;
+  --sensor-ok: 14 124 134; /* #0E7C86 */
+  --sensor-degraded: 199 119 0; /* #C77700 */
+  --sensor-rejected: 94 106 119; /* #5E6A77 */
+  --monitor: 17 20 24; /* #111418 */
+  --monitor-fg: 255 255 255;
+  --monitor-muted: 163 175 188;
+  --monitor-line: 44 50 58;
+  --trace-ppg: 79 209 197; /* #4FD1C5 */
+  --trace-eda: 246 173 85; /* #F6AD55 */
+  --trace-temp: 144 205 244; /* #90CDF4 */
+  --trace-motion: 203 213 224; /* #CBD5E0 */
+  --arousal: 47 111 184; /* sampled gauge/timeline arousal #2F6FB8 */
+  --attr-pain: 17 20 24;
+  --attr-stress: 143 134 204; /* sampled #8F86CC */
+  --attr-agitation: 227 162 127; /* sampled #E3A27F */
+  --attr-rest: 125 136 148; /* sampled #7D8894 */
+  --attr-unexplained: 188 197 207;
+  --body-fill: 230 235 241; /* sampled #E6EBF1 */
+  --body-stroke: 184 194 206;
+  --subtle: 241 245 250; /* hover row, sampled #F1F5FA */
+  --chip-icon: 238 241 245;
+  --tooltip: 17 20 24;
+  --tooltip-fg: 255 255 255;
+  --focus: 31 95 168;
+  --focus-w: 3px;
+  --scrim: 17 20 24;
+  --shadow: 0 8px 24px rgb(17 20 24 / 0.06);
+  --grid-line: 17 20 24;
+  color-scheme: light;
+}
+
+[data-theme='night'] {
+  --card-outline: 36 44 54;
+  --alert-solid-fg: 211 47 47;
+  --chip-icon-fg: 230 237 243;
+  --chip-timed-border: 92 84 52;
+  --page-from: 13 17 23; /* #0D1117 */
+  --page-to: 13 17 23;
+  --card: 22 27 34; /* #161B22 */
+  --card-border: 36 44 54; /* #242C36 */
+  --border-w: 1px;
+  --ink: 230 237 243; /* #E6EDF3 */
+  --text-2: 163 175 188; /* #A3AFBC */
+  --muted: 122 135 148; /* #7A8794 */
+  --pill-active: 230 237 243; /* #E6EDF3 */
+  --pill-active-fg: 13 17 23;
+  --butter: 58 53 34; /* #3A3522 */
+  --sky: 30 43 58; /* #1E2B3A */
+  --action: 233 203 69; /* #E9CB45 */
+  --action-fg: 13 17 23;
+  --accent: 111 168 232; /* assumption: arousal-line blue doubles as interactive accent */
+  --pain-mild: 95 179 138; /* #5FB38A */
+  --pain-moderate: 217 164 65; /* #D9A441 */
+  --pain-severe: 212 106 120; /* #D46A78 */
+  --severity-fg: 13 17 23;
+  --band: 74 86 99; /* #4A5663 */
+  --track: 36 44 54;
+  --alert: 211 47 47; /* #D32F2F */
+  --alert-fg: 255 255 255;
+  --advisory-fill: 43 36 20; /* assumption */
+  --advisory-border: 217 164 65; /* assumption = pain moderate */
+  --advisory-text: 240 200 119; /* assumption */
+  --advisory-action: 217 164 65;
+  --sensor-ok: 63 182 191; /* #3FB6BF */
+  --sensor-degraded: 224 154 43; /* #E09A2B */
+  --sensor-rejected: 122 135 148; /* #7A8794 */
+  --monitor: 10 13 18; /* #0A0D12 */
+  --monitor-fg: 230 237 243;
+  --monitor-muted: 122 135 148;
+  --monitor-line: 36 44 54;
+  --trace-ppg: 79 209 197;
+  --trace-eda: 246 173 85;
+  --trace-temp: 144 205 244;
+  --trace-motion: 203 213 224;
+  --arousal: 111 168 232; /* #6FA8E8 */
+  --attr-pain: 230 237 243; /* sampled — pain segment is light in Night */
+  --attr-stress: 143 133 203;
+  --attr-agitation: 217 150 122;
+  --attr-rest: 107 119 132;
+  --attr-unexplained: 74 86 99;
+  --body-fill: 26 33 41; /* sampled #1A2129 */
+  --body-stroke: 52 62 74;
+  --subtle: 30 37 48;
+  --chip-icon: 36 44 54;
+  --tooltip: 230 237 243;
+  --tooltip-fg: 13 17 23;
+  --focus: 111 168 232;
+  --focus-w: 3px;
+  --scrim: 0 0 0;
+  --shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  --grid-line: 230 237 243;
+  color-scheme: dark;
+}
+
+[data-theme='hc'] {
+  --card-outline: 255 255 255;
+  --alert-solid-fg: 255 255 255; /* black pill, white text on the yellow HC banner */
+  --chip-icon-fg: 0 0 0;
+  --chip-timed-border: 255 255 255;
+  --page-from: 0 0 0;
+  --page-to: 0 0 0;
+  --card: 0 0 0;
+  --card-border: 255 255 255;
+  --border-w: 2px;
+  --ink: 255 255 255;
+  --text-2: 230 230 230; /* #E6E6E6 */
+  --muted: 204 204 204; /* #CCCCCC */
+  --pill-active: 255 255 255;
+  --pill-active-fg: 0 0 0;
+  --butter: 0 0 0;
+  --sky: 0 0 0;
+  --action: 255 225 77; /* #FFE14D */
+  --action-fg: 0 0 0;
+  --accent: 255 225 77;
+  --pain-mild: 255 255 255; /* severity carried by pattern, not hue */
+  --pain-moderate: 255 255 255;
+  --pain-severe: 255 255 255;
+  --severity-fg: 0 0 0;
+  --band: 158 158 158; /* #9E9E9E */
+  --track: 0 0 0;
+  --alert: 255 225 77; /* alert banner is yellow in HC; no red anywhere */
+  --alert-fg: 0 0 0;
+  --advisory-fill: 0 0 0; /* assumption: black fill + yellow 2 px border */
+  --advisory-border: 255 225 77;
+  --advisory-text: 255 255 255;
+  --advisory-action: 255 225 77;
+  --sensor-ok: 255 255 255; /* sensor state carried by shape only */
+  --sensor-degraded: 255 255 255;
+  --sensor-rejected: 255 255 255;
+  --monitor: 0 0 0;
+  --monitor-fg: 255 255 255;
+  --monitor-muted: 204 204 204;
+  --monitor-line: 255 255 255;
+  --trace-ppg: 255 255 255;
+  --trace-eda: 255 255 255;
+  --trace-temp: 255 255 255;
+  --trace-motion: 255 255 255;
+  --arousal: 255 255 255;
+  --attr-pain: 255 255 255;
+  --attr-stress: 255 255 255;
+  --attr-agitation: 255 255 255;
+  --attr-rest: 255 255 255;
+  --attr-unexplained: 255 255 255;
+  --body-fill: 0 0 0;
+  --body-stroke: 255 255 255;
+  --subtle: 26 26 26;
+  --chip-icon: 255 255 255;
+  --tooltip: 255 255 255;
+  --tooltip-fg: 0 0 0;
+  --focus: 255 225 77;
+  --focus-w: 4px;
+  --scrim: 0 0 0;
+  --shadow: none;
+  --grid-line: 255 255 255;
+  color-scheme: dark;
+}

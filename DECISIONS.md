@@ -106,7 +106,10 @@ The user can always switch scales.
 - Even so, only display preferences (theme, language, time scale, WS URL) are persisted.
 - Profiles, context, references and audit stay in memory (data minimisation). The audit is exported as JSON on demand.
 
-**D‑16 Tailwind and icons.** §14's "no arbitrary values / lucide 0.383" limits also came from artifacts. Here the app uses current lucide-react and Tailwind theme extensions mapped to CSS variables. Arbitrary values are avoided anyway, so styling stays token-driven.
+**D‑16 Tailwind and icons.** §14's "no arbitrary values / lucide 0.383" limits also came from artifacts. Here the app uses current lucide-react and Tailwind theme extensions mapped to CSS variables.
+- Colours always come from tokens.
+- Arbitrary values are kept to one-off geometry measured from the artboards (e.g. the 34 px dialog title, the 38 px logo tile).
+- *(Phase 1)* Tailwind is v3.4, so `tailwind-merge` is pinned to **v2**. v3 assumes Tailwind v4 semantics and silently dropped `outline` and the custom `border-theme` width; `src/lib/cn.test.ts` guards this.
 
 **D‑17 Alerts while locked or with a dialog open.**
 - Monitoring continues while the session is locked.
@@ -174,3 +177,59 @@ The user can always switch scales.
 **D‑32 Live-signals yellow action button.** The design doesn't say what it does. It opens the Timeline tab with the signal lanes expanded (the same history, full screen).
 
 **D‑33 Sign-in error.** Amber outline plus a warning icon, with the text "Staff ID or password not recognised", as in A11. In this prototype the credentials are never checked. The error variant can be seen only in `/dev/components`, so a real sign-in always succeeds as a visual-only flow.
+
+## Phase 1 implementation decisions
+
+**D‑34 Token values not on the A8 token sheet.** Sampled from the artboards where possible; otherwise assumed. All are marked in `src/styles/tokens.css`.
+
+| Token | Projector | Night | HC | Source |
+|---|---|---|---|---|
+| Attribution stress / agitation / rest | #8F86CC / #E3A27F / #7D8894 | #8F85CB / #D9967A / #6B7784 | white + pattern | sampled A1, A2 |
+| Attribution pain | ink | #E6EDF3 (light segment) | white, solid | sampled A2 |
+| Arousal line (projector) | #2F6FB8 | #6FA8E8 | white, dashed | sampled A1; sheet for Night |
+| Body silhouette fill | #E6EBF1 | #1A2129 | black + white stroke | sampled A1, A2 |
+| Scale track / hover row | #EEF1F5 / #F1F5FA | #242C36 / #1E2530 | black / #1A1A1A | sampled A1 |
+| Night interactive accent | — | #6FA8E8 | — | **assumption** (not on the sheet) |
+| Night advisory fill / border / text | — | #2B2414 / #D9A441 / #F0C877 | — | **assumption** (no Night advisory artboard) |
+| HC advisory | — | — | black fill, 2 px yellow border, white text | **assumption** |
+| Card outline | none (borderless on light canvas) | #242C36 | 2 px white | A1 / A2 / A7 |
+
+**D‑35 Form controls (no artboard except A11 inputs and the A5 note/switch).**
+- Fields are 52 px high with radius 14 and a 1 px border (2 px in HC). Labels sit above the field, in 16 px medium.
+- Required fields show "· required" in muted text.
+- Validation messages are amber with a warning icon (never red). The invalid field gets an amber border plus `aria-invalid`.
+- Stepper: round 52 px − / + buttons around a numeric field. PageUp/PageDown step by 10.
+- Relative-time picker: a small Segmented ("Now · 5 · 15 · 30 min ago · custom").
+- `EffectLine`: a small route disc, then the route name in bold, then the effect text.
+- `FreshnessTag`: clock icon plus age. Stale is amber and bold, with an sr-only "(stale)"; it is never red.
+- PIN: four 64×72 password cells. Focus advances on each digit and Backspace steps back.
+
+**D‑36 Toast (not designed).**
+- Uses the dark active-pill colour with radius 12, a check icon, title and description, an optional underlined action, and a close button.
+- Placed bottom-centre above the footer.
+- Lasts 10 s when it carries an Undo action (task §3.2‑B), otherwise 5 s. Radix Toast supplies the live region.
+
+**D‑37 Persistent chips always show "Persistent".** A4's drug chips omit the suffix, while A1's ventilation chip shows it. The spec (§6.3) says persistent chips are marked, so every persistent chip carries it. Timed chips show "· m:ss left" and a countdown ring instead.
+
+**D‑38 Driver row layout (fixes the A1/A4 wrap defect).**
+- The title gets the full row and is truncated to one line, with the full text in `title` and the hover tooltip.
+- Contribution and bar move to the sub-line row, which is where they already sit visually in the design.
+- Bar: the zero tick sits at 30 % and ±0.5 fills the rest, so a negative contribution (e.g. −0.03) extends left.
+- A degraded source adds an amber warning icon after the title and "sensor degraded (0.52)" in the sub-line.
+
+**D‑39 Gauge geometry.**
+- A ~200° arc, open at the bottom, with a 14 px stroke.
+- The arousal range is z 0–4, with a tick at the HIGH threshold (z = 2, top centre).
+- The pain range is 0–10. The 80 % upper bound is a thin outer arc in the band grey, as in A1.
+- In HC the arousal arc is dashed so it isn't distinguished from pain by colour alone.
+
+**D‑40 `/dev/components` structure.**
+- Five tabs, set by `?sheet=1…4|extras`. Tabs 1–4 rebuild the four A8 sheets from live components, so each can be compared with its artboard; hero cards are shown at the sheet's miniature scale with CSS `zoom`. The fifth tab holds the patterns for undesigned screens.
+- Theme and language switch the whole page. The FR hero variant and the HC attribution and hotspot columns are rendered in a scoped theme or language (`data-theme` on a wrapper, `LangScope`).
+- The colour-token swatches read the computed CSS variable values, so the page always shows the real tokens.
+- The token *names* on sheet 4 are technical identifiers and are not translated. Every other string goes through the EN/FR dictionary.
+
+**D‑41 Screenshot tooling.**
+- `npm run screenshots` uses `playwright-core` with the locally installed Edge/Chrome, so no browser download is needed. It captures every sheet at 1920×1080 and 1366×768 in all three themes and fails on any console error or warning.
+- `scripts/overlay-check.mjs` smoke-tests the drawer, dialog, popover, toast, tooltip, stepper and select by keyboard and pointer.
+- Screenshots are git-ignored; regenerate them locally.
