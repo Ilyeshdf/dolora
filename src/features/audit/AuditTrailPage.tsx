@@ -2,7 +2,9 @@ import { useState, useLayoutEffect, useRef } from 'react';
 import { useL10n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { fmtTime } from '@/lib/time';
-import { useMonitor, type AuditEntry, type AuditKind } from '@/store/monitor';
+import { useClinical } from '@/store/clinical';
+import { useView } from '@/features/monitor/useView';
+import type { AuditEntry, AuditKind } from '@/store/auditTypes';
 import { Footer } from '@/components/ui/Brand';
 import { Card, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -51,8 +53,9 @@ function kindToken(kind: AuditKind) {
 export function AuditTrailPage() {
   const l = useL10n();
   const compact = useCompact();
-  const audit = useMonitor((s) => s.audit);
-  const patient = useMonitor((s) => s.view.patient);
+  const audit = useClinical((s) => s.audit);
+  const view = useView();
+  const patient = view.patient;
   const [filter, setFilter] = useState<AuditFilter>('all');
   const [search, setSearch] = useState('');
 
