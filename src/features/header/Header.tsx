@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { NavLink, useParams } from 'react-router-dom';
-import { Contrast, Moon, Sun } from 'lucide-react';
+import { Contrast, Moon, Sun, TriangleAlert } from 'lucide-react';
+import { missingRecommended, type RecommendedField } from '@/clinical/profile';
+import { useClinical } from '@/store/clinical';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { usePrefs } from '@/store/prefs';
 import { useMonitor } from '@/store/monitor';
+import { useView } from '@/features/monitor/useView';
 import { Wordmark } from '@/components/ui/Brand';
 import { Button } from '@/components/ui/Button';
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/Overlay';
@@ -20,12 +24,12 @@ import { BaselinePill, ConnectionPill, ModeConfirmBody, ModeControl, type Mode }
 export function Header() {
   const t = useT();
   const l = useL10n();
-  const view = useMonitor((s) => s.view);
+  const view = useView();
   const panel = useMonitor((s) => s.panel);
   const setPanel = useMonitor((s) => s.setPanel);
   const confirmMode = useMonitor((s) => s.confirmMode);
   const clinician = useClinical((s) => s.clinician);
-  const { bedId = "4" } = useParams();
+  const { bedId = '4' } = useParams();
   const bedRec = useClinical((s) => s.beds[bedId]);
   const missing = bedRec?.profile
     ? missingRecommended(
@@ -45,7 +49,6 @@ export function Header() {
   const cycleTheme = usePrefs((s) => s.cycleTheme);
   const lang = usePrefs((s) => s.lang);
   const toggleLang = usePrefs((s) => s.toggleLang);
-  const { bedId = '4' } = useParams();
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
   const ThemeIcon =
     theme === "projector" ? Moon : theme === "night" ? Sun : Contrast;
@@ -63,8 +66,11 @@ export function Header() {
     <header className="flex h-18 shrink-0 items-center justify-between gap-4 px-8 compact:h-15 compact:gap-2 compact:px-4">
       <div className="flex min-w-0 items-center gap-4 compact:gap-2">
         <Wordmark compact={false} className="compact:[&>span:last-child]:hidden" />
-        <span
-          className="nowrap inline-flex h-10 min-w-0 items-center gap-1.5 rounded-full border-theme border-card-border bg-card px-3.5 text-base hc:border-ink"
+        <button
+          type="button"
+          onClick={() => setPanel(panel === 'profile' ? null : 'profile')}
+          aria-pressed={panel === 'profile'}
+          className="nowrap inline-flex h-10 min-w-0 items-center gap-1.5 rounded-full border-theme border-card-border bg-card px-3.5 text-base hover:bg-subtle hc:border-ink"
           aria-label={t.header.patient(view.patient.ref, view.patient.bed)}
           title={`${view.patient.ref} · ${t.header.bed(view.patient.bed)} · ${l(view.patient.setting)} · ${l(view.patient.day)}`}
         >
@@ -75,7 +81,19 @@ export function Header() {
               {' '}· {l(view.patient.setting)} · {l(view.patient.day)}
             </span>
           </span>
-        </span>
+        </button>
+        {missing.length ? (
+          <Tooltip content={t.entry.missing(missing.map((m) => missingLabels[m]).join(', '))}>
+            <button
+              type="button"
+              onClick={() => setPanel('profile', missing[0])}
+              className="nowrap -ml-2 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-advisory-border/60 bg-advisory-fill px-2.5 text-sm font-semibold text-advisory-text hc:border-2 hc:border-advisory-border compact:px-2"
+            >
+              <TriangleAlert aria-hidden size={14} strokeWidth={2} />
+              <span className="compact:sr-only">{t.entry.profileIncomplete}</span>
+            </button>
+          </Tooltip>
+        ) : null}
       </div>
 
       <nav aria-label={t.header.main} className="shrink-0">
@@ -113,7 +131,7 @@ export function Header() {
           <li>
             <button type="button" aria-pressed={panel === 'audit'} onClick={() => setPanel(panel === 'audit' ? null : 'audit')} className={navItem(false)}>
               {t.nav.audit}
-            </NavLink>
+            </button>
           </li>
         </ul>
       </nav>
