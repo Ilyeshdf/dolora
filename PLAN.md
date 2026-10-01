@@ -1,0 +1,197 @@
+# ALGOS‑Δ Clinical Dashboard — Implementation Plan
+
+Sources of truth:
+- **Behaviour:** `docs/ALGOS-Delta_Project_Specification.md` (cited below as §n).
+- **Visual layout:** the Claude Design project (`ALGOS Dashboard.dc.html`, `ALGOS Components.dc.html`, `ALGOS Overlays.dc.html`, `support.js`), exported to `design/`.
+- Resolutions of spec ambiguities: `DECISIONS.md` (cited below as D‑n).
+
+> **Blocker:** the design files are not in the repo yet, and the design MCP needs `/design-login`, which can't be run from this session. Until they arrive, Phase 1 tokens and primitives are built from spec §10 and the artboard descriptions in §8. Phase 2's pixel check against the designs is blocked until `design/` is populated.
+
+---
+
+## 1. Screens and routes
+
+Router: `react-router-dom` v6. It isn't in the requested stack, but it's needed for real routes. Overlays are URL-addressable where useful, so deep links and keyboard shortcuts behave the same way.
+
+| Route | Screen | Spec | Notes |
+|---|---|---|---|
+| `/signin` | Sign in | A11, §7.8 | Visual-only credentials, "Enter demo mode" |
+| `/unit` | Unit overview · ICU | A12 | Bed cards sorted by priority; profile-status badges ("Profile required", "Profile incomplete") |
+| `/bed/:bedId/admit` | Admission wizard (3 steps + summary) | Task §3.2‑A | Opened automatically when a bed has no profile |
+| `/bed/:bedId/calibration` | Calibration (90 s, configurable) | A9, §7.7 | Auto-routes to Monitor when done |
+| `/bed/:bedId/monitor` | Monitor (default) | A1–A4, A7, A10 | All live states |
+| `/bed/:bedId/timeline` | Timeline tab, full screen, 30 min–24 h | §20.7 | |
+| `/bed/:bedId/assessments` | Assessments tab | §20.7, D‑12 | References vs. estimates, disagreement note |
+| `/dev/components` | Component sheet | A8 | Every component × state × theme |
+
+**Overlays.** Rendered inside the bed layout. Their state lives in the UI store. Drawers also mirror to `?panel=` so deep links work.
+
+| Overlay | Type | Trigger |
+|---|---|---|
+| CPOT / BPS dialog | Dialog | `C`, alert "Assess", abstention card, palette |
+| NRS quick entry | Popover/Dialog | Same triggers, when the scale picker selects NRS (D‑14) |
+| Audit trail | Sheet, right, 520 px | `H`, nav tab |
+| Patient profile | Sheet, right, 520 px | Patient pill, palette |
+| Add context | Command popover | "+ Add context", palette |
+| Log event | Inline button group + time adjust popover | Context bar |
+| Mark as baseline | Confirm popover with checklist | Context bar button |
+| Mode change | Confirm popover | ICU/Ward segmented, `M` |
+| Command palette | Command dialog | `Ctrl+K` |
+| Demo director | Floating panel, labelled non-clinical | `Shift+D` (demo mode only) |
+| Settings | Sheet | Header (WS URL, time scale, seed, calibration duration, stale thresholds) |
+| Shortcut help | Popover | `?` |
+| Session locked | Full-screen overlay | 5 min idle, `Ctrl+L` |
+
+## 2. Component tree (Monitor)
+
+```
+<App>
+ ├─ <Providers> (Theme, I18n, Tooltip, Toaster, Router)
+ ├─ <SessionGuard> → <SessionLockOverlay/>
+ ├─ <SimulatedDataWatermark/>              (demo mode only, persistent)
+ ├─ <CommandPalette/> <DemoDirector/> <ShortcutLayer/>
+ └─ <BedLayout bedId>                       (1920×1080 grid, no page scroll)
+     ├─ <Header>
+     │   ├─ <Wordmark/> <PatientPill/ (+ ProfileIncompleteBadge)>
+     │   ├─ <PillNav/>                       Monitor · Timeline · Assessments · Audit trail
+     │   ├─ <ModeSegmented/ + RuleText/ + ModeConfirmPopover/>
+     │   ├─ <AssessmentUnavailablePill/>     (REJECTED only)
+     │   ├─ <ConnectionPill/> <BaselinePill quality/>
+     │   └─ <ThemeButton/> <LangButton/> <HelpButton/> <ClinicianInitials/>
+     ├─ <ContextBar>
+     │   ├─ <ContextChip persistent|timed/>* (tooltip: route + effect; remove → reason)
+     │   ├─ <AddContextCommand/>
+     │   ├─ <LogEventGroup collapsible/>
+     │   ├─ <RouteLegend/> <MarkBaselineButton/ + BaselineConfirm/>
+     ├─ <AlertSlot>                          fixed height: Empty | Alert | Advisory | Acknowledged | HC
+     ├─ <MainGrid 440 | 1fr | 440>
+     │   ├─ Left:   <PainHeroCard/> | <AbstentionCard/>   <ArousalPainGauges/>
+     │   ├─ Centre: <BodyStage> (<BodySilhouette/> <SensorHotspot/>* <DriverCallout/>* <ToolRail/> <SensorLegend/>)
+     │   │          <TimelineCard window=5|10|30 compare/>
+     │   └─ Right:  <AttributionCard/> <TopDriversCard/> <LiveSignalsCard (canvas/SVG, refs)/>
+     └─ <Footer/>                            disclaimer · model version · validated population
+```
+
+Shared primitives (Phase 1, `src/components/ui/`): Card, Pill, Segmented, Chip (persistent / timed with countdown ring), IconButton (44 px round), ActionButton (yellow round), Badge, StatusPill (dot + text), Tooltip, Toast, Stepper, RelativeTimePicker, ScaleSegmented (RASS), EffectLine (route icon + text), FreshnessTag, FieldMessage (amber).
+
+## 3. State model (Zustand)
+
+Slices in one store, `src/store/`. Selectors are fine-grained so the 1 Hz updates don't re-render the whole tree.
+
+```ts
+session:    { user: {initials, role} | null, demoMode: boolean, locked: boolean, lastActivity }
+prefs:      { theme: 'projector'|'night'|'hc', lang: 'en'|'fr', timeScale: 1|5|10,
+              wsUrl, seed, calibrationSec: 90, staleRassH: 4, staleCamH: 4, cpotReminderH: 4 }
+connection: { kind: 'live'|'simulator'|'reconnecting'|'offline'|'paused', lastMessageAt }
+beds: Record<BedId, {
+  patientProfile: PatientProfile | null,           // zod-validated
+  activeContext:  ContextItem[],                   // flag, startedAt, endsAt?, removed?: {at, reason}
+  events:         ClinicalEvent[],                 // event, t (event time), enteredAt
+  references:     ReferenceAssessment[],           // nrs|cpot|bps, total, items?, t, enteredAt, note?
+  baseline:       { state, calibratedAt, quality: 'good'|'provisional', recalibrationNeeded },
+  live:           StateMessage | null,             // last inbound 1 Hz state
+  history:        StateSample[],                   // ring buffer, 24 h at 1 Hz (downsampled > 30 min)
+  alert:          AlertMachineState,               // see §12 rules
+  lastValid:      { score, at } | null,            // stale handling
+}>
+audit:      AuditEntry[]                           // append-only, never deleted
+ui:         { openPanel, dialog, paletteOpen, directorOpen, highlightedDriver, timelineWindow, compareModes }
+```
+
+Telemetry (25 Hz) does **not** go into React state. It goes into per-bed ring buffers (`src/data/telemetryBuffer.ts`) that the SVG/canvas renderer reads at ≤ 10 fps (§14).
+
+Persistence: only `prefs` go to `localStorage`. Clinical data stays in memory (data minimisation, D‑15). Audit is exported as a JSON Blob.
+
+## 4. Data contracts (`src/contracts/`)
+
+All contracts are typed and zod-validated at the adapter boundary. Bad inbound messages are dropped and logged to the audit as `System · Malformed message`.
+
+**Inbound** (§5, extended per D‑7):
+- `StateMessage`. As in §5.1, with these changes:
+  - `channels[*].state: 'OK'|'DEGRADED'|'REJECTED'|'MASKED'`;
+  - `channels[*].derived?: {signal:'resp', source:'ppg'}`;
+  - `channels[*].masked_by?: Flag[]`;
+  - `alert.id`, `alert.ack {by, at}`;
+  - `reference.last_bps`;
+  - `arousal.level: 'LOW'|'MODERATE'|'HIGH'`;
+  - `advisories: Advisory[]` (NMB, SCI, glucose prompt, washout).
+- `TelemetryMessage {t0, fs:25, ppg[], eda[], temp[], acc[]}`.
+- `EventMessage {event, t, duration_s}`.
+
+**Outbound** (task §3.4):
+- `patient_profile {…PatientProfile}`
+- `context_flag {flag, active, started_at, reason?}`
+- `event {event, t, entered_at}`
+- `cpot_entry | bps_entry | nrs_entry {items?, total, t, entered_at, note?}`
+- `mark_baseline {quality}`
+- `mode_change {mode}`
+- `ack_alert {alert_id}`
+
+**PatientProfile** (zod, `src/contracts/profile.ts`):
+- **Required:** `patientRef (/^P-[0-9A-F]{4}$/)`, `bedId`, `ageYears (18–110)`, `sex`, `careSetting`, `communication`, `airway`.
+- **Recommended:** `admission {category, sinceSurgeryAt}`, `rass {value −5..4, at}`, `camIcu {result, at}`, `medications[] {class, startedAt?}`, `conditions[]`.
+- **Optional:** `coreTemp {source, value 25–43, at}`, `skinSites[] {site, condition}`, `note (≤ 500, no identifiers)`.
+- **Never stored:** names, dates of birth, doses.
+
+**`clinicalEffects.ts`** (`src/clinical/`): the single typed config shared by the UI and the simulator. It has one entry per flag, medication class, condition, event and profile-derived flag:
+```ts
+{ id, kind, routes: Route[], timedMin?, reliability: Partial<Record<Channel, number>>,
+  masks?: Channel[], disables?: Feature[], prior?: {pain?, stress?, agitation?},
+  baselineShift?: {...}, intervalWiden?: number, advisory?: AdvisoryId,
+  effectText: {en, fr}, requiresStartTime: boolean }
+```
+Profile fields (airway, AF, paced, CAM-ICU hyperactive, …) are mapped to effects by `deriveEffects(profile, context, events, now)`. That function is pure and unit-tested, and it feeds both the "Effect on ALGOS‑Δ" lines and the engine.
+
+## 5. Engine and data source (`src/engine/`, `src/data/`)
+
+- `DataSource` interface → `WebSocketSource` (live) | `SimulatorSource` (demo only).
+- In live mode, connection loss shows **"Connection lost — data paused"**. It never falls back to the simulator (D‑9).
+- Pure engine modules, each unit-tested:
+  - `reliability.ts`: r_c = SQI × Π m.
+  - `channelState.ts`: OK/DEGRADED/REJECTED/MASKED.
+  - `status.ts`: OK/DEGRADED/REJECTED plus abstain reasons.
+  - `prior.ts`: Saerens shift.
+  - `alertMachine.ts`: ICU/Ward rules, persistence, hysteresis, re-escalation, Ward rate limit, no alert while REJECTED.
+  - `episode.ts`: ≥ 4 for 5 s / < 2 for 10 s.
+  - `stale.ts`: age, dim, hide after 300 s; freshness for RASS/CAM/CPOT.
+  - `rules.ts`: every task §3.3 rule.
+  - `validation.ts`: contradiction checks.
+- The simulator runs on mulberry32 seed 42, with τ = 5 s smoothing and the scenarios from §15.1. It consumes outbound messages and applies `clinicalEffects.ts` through the same engine, so every input visibly changes rings, masks, interval, weights, attribution and advisories.
+
+## 6. Directory layout
+
+```
+src/
+  app/            routes, providers, layouts
+  components/ui/  primitives (shadcn + custom)
+  features/       header, context-bar, alert-slot, hero, gauges, body-map, timeline,
+                  attribution, drivers, telemetry, cpot-bps, nrs, audit, profile,
+                  admission, add-context, events, baseline, mode, palette, director,
+                  lock, signin, unit, calibration, assessments
+  clinical/       clinicalEffects.ts, scales.ts (CPOT/BPS/RASS/CAM descriptors)
+  contracts/      zod schemas + types
+  engine/         pure logic (tested)
+  data/           websocket, simulator, telemetry buffer
+  store/          zustand slices
+  i18n/           en.ts, fr.ts (typed: fr must satisfy keyof en)
+  styles/         tokens.css (3 themes), globals.css
+  test/           vitest setup
+```
+
+## 7. Phase plan and checkpoints
+
+Each phase ends with these checks: `tsc --noEmit` passes, lint passes, tests pass, no console errors. Then I take screenshots at 1920×1080 and 1366×768, compare them with the designs, and commit.
+
+| Phase | Scope | Checkpoint / exit criteria |
+|---|---|---|
+| **0** | PLAN.md, DECISIONS.md, `git init` | Owner reviews both docs ← **we are here** |
+| **1 Design system** | Vite + React 18 + TS strict, Tailwind, shadcn/ui, tokens for 3 themes + attribution palette, Plus Jakarta Sans with `tabular-nums`, i18n skeleton, primitives, `/dev/components` | Every primitive in every state in all 3 themes; HC uses AAA contrast and patterns; screenshots vs. the Components design |
+| **2 Monitor** | Header → footer, all monitor cards, body map, timeline, telemetry; states A1 pain+alert, A2 night stress, A3 abstention, A4 degraded+context, A5 CPOT/BPS (+ BPS tab), A6 audit, A7 HC; layout fixes from §19.1 | Each state reachable from a fixture; side-by-side screenshots match the designs; no wraps, overlaps or clipped footer at 1920×1080; graceful at 1366×768 |
+| **3 Clinical data entry** | `clinicalEffects.ts`, zod schemas, admission wizard, profile drawer (undo toast, freshness, sticky effects), add-context command, log-event group with retro time, NRS quick entry + scale selection, baseline confirm with quality, mode confirm, command palette, every §3.3 rule | Unit tests for every §3.3 rule and schema; keyboard-only walkthrough of each form; axe check without violations; every input visibly changes the monitor in the simulator |
+| **4 Data/logic** | WS adapter, simulator, alert machine, stale handling, audit (append-only, export), demo director, session lock, full EN/FR, theme cycling, shortcuts §11.3, live-mode safeguard | Tests for alert rules, abstention and stale timers; "Run full demo" plays end to end; killing the WS in live mode shows "data paused", not simulated data |
+| **5 New screens** | Sign in, Unit overview, Calibration, Acknowledged/Ward/compare, lock overlay, Timeline tab, Assessments tab | Visual language consistent with the designs; screenshots; README complete (install, run, demo, shortcuts, libraries + licences) |
+
+**Risks**
+- Design files aren't available yet, so Phases 1–2 can't be compared with the designs (see the blocker above).
+- Recharts can't easily draw the hatched abstention region or the alert triangles. I'll use custom `<Customized>` SVG layers.
+- At 1366×768 the three-column grid has to compress. Plan: the side columns shrink to 360 px, the body stage loses callout labels (hotspots stay), and the hero numeral scales from 144 px to 112 px. Nothing is hidden that carries safety meaning (alert slot, status, disclaimer).
