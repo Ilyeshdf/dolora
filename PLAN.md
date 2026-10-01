@@ -2,10 +2,38 @@
 
 Sources of truth:
 - **Behaviour:** `docs/ALGOS-Delta_Project_Specification.md` (cited below as §n).
-- **Visual layout:** the Claude Design project (`ALGOS Dashboard.dc.html`, `ALGOS Components.dc.html`, `ALGOS Overlays.dc.html`, `support.js`), exported to `design/`.
+- **Visual layout:** the artboard images in `design/`, taken from `ALGOS-Delta_deck.pptx` and rendered at 1920×1080. The Claude Design source files (`.dc.html`, `support.js`) couldn't be imported because the design connector needs `/design-login`. The images are complete, so they are the visual reference.
 - Resolutions of spec ambiguities: `DECISIONS.md` (cited below as D‑n).
 
-> **Blocker:** the design files are not in the repo yet, and the design MCP needs `/design-login`, which can't be run from this session. Until they arrive, Phase 1 tokens and primitives are built from spec §10 and the artboard descriptions in §8. Phase 2's pixel check against the designs is blocked until `design/` is populated.
+### Design inventory (`design/`)
+
+| File | Artboard | Notes for implementation |
+|---|---|---|
+| `A01-pain-episode-alert.png` | A1 Projector · pain + alert | Nav shows a **Unit** tab before Monitor (D‑28) |
+| `A02-night-arousal-not-pain.png` | A2 Night · stress | "≠" between gauges; diamond derived hotspot; legend adds "Derived signal" |
+| `A03-abstention-motion.png` | A3 Abstention | Fixture uses CPOT 4, not 5 (D‑2) |
+| `A04-degraded-clinical-context.png` | A4 Degraded + context | "↑ Elevated" becomes "↑ Moderate" (D‑4) |
+| `A05-cpot-bps-dialog.png` | A5 CPOT/BPS dialog | Dialog ~880 px, radius 28 |
+| `A06-audit-trail-drawer.png` | A6 Audit drawer | Drawer is 560 px in the design, 520 px in the task brief (D‑27) |
+| `A07-high-contrast.png` | A7 High contrast | Alert triangle is yellow in HC; 4 px yellow focus ring |
+| `A08-components-1…4` | A8 Component sheet | Variants and tokens; drives `/dev/components` |
+| `A09-calibration.png` | A9 Calibration | **Monitor layout in the CALIBRATING state**, not a separate screen (D‑29) |
+| `A10-acknowledged-ward-compare.png` | A10 Ack · Ward · Compare | Acknowledged strip, Ward rule, ghost triangles, mode confirm popover |
+| `A11-sign-in.png` | A11 Sign in | Amber error variant |
+| `A12-unit-overview.png` | A12 Unit overview | 4 stat cards + 8 bed cards (4 × 2) |
+| `A13-session-locked.png` | A13 Session locked | 4-digit PIN, blurred dashboard |
+
+**Not designed** (follow the existing visual language): admission wizard, profile drawer, add-context command popover, log-event group, NRS quick entry, baseline confirm, command palette, demo director, Timeline tab, Assessments tab, BPS tab, settings sheet, help popover, toast, "Profile required"/"Profile incomplete" badges.
+
+**Defects visible in the images, fixed in implementation (D‑0):** these are wraps or overlaps in the artboards. Don't copy them.
+- "Estimated pain", "Arousal vs pain", "Last 10 minutes" (overlaps the y-axis "10"), "Live signals" (overlaps "PPG"), "Full scale", "Switch user".
+- The trend "↑ 0.9 /min" wraps into the episode line.
+- Driver titles wrap and overlap their sublines.
+- "Coverage not validated for this context" spills out of its badge.
+- "Last valid 5.9 · 45 s ago".
+- The sign-in placeholder and unit select wrap.
+- The component-sheet title wraps ("1 / 4").
+- The footer disclaimer is truncated with "…".
 
 ---
 
@@ -18,8 +46,7 @@ Router: `react-router-dom` v6. It isn't in the requested stack, but it's needed 
 | `/signin` | Sign in | A11, §7.8 | Visual-only credentials, "Enter demo mode" |
 | `/unit` | Unit overview · ICU | A12 | Bed cards sorted by priority; profile-status badges ("Profile required", "Profile incomplete") |
 | `/bed/:bedId/admit` | Admission wizard (3 steps + summary) | Task §3.2‑A | Opened automatically when a bed has no profile |
-| `/bed/:bedId/calibration` | Calibration (90 s, configurable) | A9, §7.7 | Auto-routes to Monitor when done |
-| `/bed/:bedId/monitor` | Monitor (default) | A1–A4, A7, A10 | All live states |
+| `/bed/:bedId/monitor` | Monitor (default) | A1–A4, A7, A9, A10 | All live states, including CALIBRATING (A9): hero ring, "Signal check" card, sky info strip in the alert slot, empty states (D‑29) |
 | `/bed/:bedId/timeline` | Timeline tab, full screen, 30 min–24 h | §20.7 | |
 | `/bed/:bedId/assessments` | Assessments tab | §20.7, D‑12 | References vs. estimates, disagreement note |
 | `/dev/components` | Component sheet | A8 | Every component × state × theme |
@@ -30,8 +57,8 @@ Router: `react-router-dom` v6. It isn't in the requested stack, but it's needed 
 |---|---|---|
 | CPOT / BPS dialog | Dialog | `C`, alert "Assess", abstention card, palette |
 | NRS quick entry | Popover/Dialog | Same triggers, when the scale picker selects NRS (D‑14) |
-| Audit trail | Sheet, right, 520 px | `H`, nav tab |
-| Patient profile | Sheet, right, 520 px | Patient pill, palette |
+| Audit trail | Sheet, right, 520 px, starts below the alert slot (D‑27) | `H`, nav tab |
+| Patient profile | Sheet, right, 520 px, starts below the alert slot (D‑27) | Patient pill, palette |
 | Add context | Command popover | "+ Add context", palette |
 | Log event | Inline button group + time adjust popover | Context bar |
 | Mark as baseline | Confirm popover with checklist | Context bar button |
@@ -63,16 +90,25 @@ Router: `react-router-dom` v6. It isn't in the requested stack, but it's needed 
      │   ├─ <AddContextCommand/>
      │   ├─ <LogEventGroup collapsible/>
      │   ├─ <RouteLegend/> <MarkBaselineButton/ + BaselineConfirm/>
-     ├─ <AlertSlot>                          fixed height: Empty | Alert | Advisory | Acknowledged | HC
+     ├─ <AlertSlot>                          fixed 60 px: Empty | Info (sky) | Alert | Advisory | Advisory+action | Acknowledged | HC
      ├─ <MainGrid 440 | 1fr | 440>
-     │   ├─ Left:   <PainHeroCard/> | <AbstentionCard/>   <ArousalPainGauges/>
+     │   ├─ Left:   <PainHeroCard/> | <AbstentionCard/> | <CalibrationHero/>   <ArousalPainGauges/>
+     │   ├─ (calibrating) <SignalCheckCard/> floats on the body stage
      │   ├─ Centre: <BodyStage> (<BodySilhouette/> <SensorHotspot/>* <DriverCallout/>* <ToolRail/> <SensorLegend/>)
      │   │          <TimelineCard window=5|10|30 compare/>
      │   └─ Right:  <AttributionCard/> <TopDriversCard/> <LiveSignalsCard (canvas/SVG, refs)/>
      └─ <Footer/>                            disclaimer · model version · validated population
 ```
 
-Shared primitives (Phase 1, `src/components/ui/`): Card, Pill, Segmented, Chip (persistent / timed with countdown ring), IconButton (44 px round), ActionButton (yellow round), Badge, StatusPill (dot + text), Tooltip, Toast, Stepper, RelativeTimePicker, ScaleSegmented (RASS), EffectLine (route icon + text), FreshnessTag, FieldMessage (amber).
+Shared primitives (Phase 1, `src/components/ui/`), following the A8 sheets:
+- **Buttons:** dark primary pill, outline pill, ghost, round icon button (44 px), round yellow action. Each has default, hover, focus and disabled states. Focus is a 2 px gap plus a 3 px accent ring; HC uses a 4 px yellow ring.
+- **Card:** radius 24.
+- **Segmented control:** dark active pill.
+- **Chips:** persistent, timed with countdown ring, dashed "+ Add".
+- **Pills and badges:** Badge (amber-outline advisory badge, weight badge); StatusPill (dot + text); severity pill (filled, with bar glyph; HC uses a pattern); connection pill (Live / Simulator / Reconnecting · 6 s / Offline · last data age).
+- **Overlays:** Tooltip (dark), Toast.
+- **Form inputs:** Stepper, RelativeTimePicker, ScaleSegmented (RASS), PIN input.
+- **Clinical helpers:** EffectLine (route icon + text), FreshnessTag, FieldMessage (amber, warning icon).
 
 ## 3. State model (Zustand)
 
@@ -189,9 +225,9 @@ Each phase ends with these checks: `tsc --noEmit` passes, lint passes, tests pas
 | **2 Monitor** | Header → footer, all monitor cards, body map, timeline, telemetry; states A1 pain+alert, A2 night stress, A3 abstention, A4 degraded+context, A5 CPOT/BPS (+ BPS tab), A6 audit, A7 HC; layout fixes from §19.1 | Each state reachable from a fixture; side-by-side screenshots match the designs; no wraps, overlaps or clipped footer at 1920×1080; graceful at 1366×768 |
 | **3 Clinical data entry** | `clinicalEffects.ts`, zod schemas, admission wizard, profile drawer (undo toast, freshness, sticky effects), add-context command, log-event group with retro time, NRS quick entry + scale selection, baseline confirm with quality, mode confirm, command palette, every §3.3 rule | Unit tests for every §3.3 rule and schema; keyboard-only walkthrough of each form; axe check without violations; every input visibly changes the monitor in the simulator |
 | **4 Data/logic** | WS adapter, simulator, alert machine, stale handling, audit (append-only, export), demo director, session lock, full EN/FR, theme cycling, shortcuts §11.3, live-mode safeguard | Tests for alert rules, abstention and stale timers; "Run full demo" plays end to end; killing the WS in live mode shows "data paused", not simulated data |
-| **5 New screens** | Sign in, Unit overview, Calibration, Acknowledged/Ward/compare, lock overlay, Timeline tab, Assessments tab | Visual language consistent with the designs; screenshots; README complete (install, run, demo, shortcuts, libraries + licences) |
+| **5 Remaining screens** | Sign in (A11), Unit overview (A12, plus profile badges), Calibration state (A9), Acknowledged/Ward/compare (A10), lock overlay (A13): all designed, so they're compared with the designs. Timeline tab and Assessments tab are undesigned and follow the visual language. | Screenshot comparison for A9–A13; README complete (install, run, demo, shortcuts, libraries + licences) |
 
 **Risks**
-- Design files aren't available yet, so Phases 1–2 can't be compared with the designs (see the blocker above).
+- I only have flattened images, not the `.dc.html` source. Exact spacing and type sizes are measured from 1920×1080 renders, so expect ±2 px.
 - Recharts can't easily draw the hatched abstention region or the alert triangles. I'll use custom `<Customized>` SVG layers.
 - At 1366×768 the three-column grid has to compress. Plan: the side columns shrink to 360 px, the body stage loses callout labels (hotspots stay), and the hero numeral scales from 144 px to 112 px. Nothing is hidden that carries safety meaning (alert slot, status, disclaimer).

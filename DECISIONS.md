@@ -20,7 +20,8 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 **D‑1 "Coverage not validated" badge (owner).**
 - Shown on the pain hero for **every patient whose profile is a real clinical patient** (care setting ICU or Post-op ward).
 - Hidden only in demo sessions flagged as healthy-volunteer (`profile.population = 'healthy_volunteer'`, which only demo mode can set).
-- This also applies to A1. The badge is neutral grey, not amber: it describes validation scope, not a fault.
+- This also applies to A1, which doesn't show it in the design.
+- Styling follows A4/A8: an amber-outline advisory badge with an info icon. It's a caution about validation scope, not an alarm. Its label must fit on one line ("Coverage not validated for this context" spills out of the badge in A4).
 - `pain.interval.coverage_validated` from the engine can add the badge in other cases, but it can't remove it for clinical patients.
 
 **D‑2 CPOT 4 vs 5 (A5 vs A3).** A5 is authoritative: CPOT 4 at 14:33:40. The A3 fixture uses "CPOT 4 · 14:33:40". The dialog's header time and the timeline marker come from the same `reference.t`, so they can't diverge.
@@ -134,3 +135,42 @@ The user can always switch scales.
 **D‑25 Insulin-treated diabetes prompt.** "Consider checking glucose" is phrased as an assessment. It appears only when there is unexplained arousal (attribution.unexplained ≥ 0.25 or the unexplained-arousal flag) **and** an EDA rise. Never a treatment.
 
 **D‑26 Mode change source of truth.** Changing the care setting in the profile sets the *default* mode and requires the same confirmation as the ICU/Ward control. Both write one `mode_change` audit entry stating old → new rule.
+
+## Decisions from the design images (`design/`)
+
+**D‑27 Drawer geometry.**
+- A6 shows a 560 px drawer that covers the alert-slot buttons. The task brief requires 520 px and says the drawer must never cover the alert slot or the hero.
+- Resolution: both drawers (audit trail, patient profile) are 520 px wide and **start below the alert slot**. They are anchored at the top of the main grid and run to the footer.
+- The scrim covers only the centre and right columns. The header, context bar, alert slot, hero and footer stay visible and interactive, so Acknowledge and Assess are always reachable.
+
+**D‑28 Nav tabs.**
+- A1 and A12 show a **Unit** tab; A2–A10 don't. Resolution: Unit · Monitor · Timeline · Assessments · Audit trail on every bed screen.
+- On Unit overview, the bed-specific header items are hidden: no patient pill, and no mode/baseline controls (A12 shows them, but they'd be ambiguous with 8 beds). The header there keeps unit-level items only: connection, theme, language, help and user.
+
+**D‑29 Calibration is a Monitor state, not a route.**
+- A9 is the Monitor layout with `baseline.state = CALIBRATING`. The hero is a progress ring ("0:54 / 1:30"); the alert slot shows the sky "info" variant with time remaining; a "Signal check" card sits on the body stage; the other cards show "Available after calibration".
+- The `/calibration` route is dropped. Monitor goes to normal display automatically when calibration completes.
+- A9's header shows Ward selected while the patient pill says ICU. That's a mock-up inconsistency: the mode follows the care setting (ICU) unless the clinician changes it.
+
+**D‑30 Colours not in the spec's token table.** Taken from A8 sheet 4:
+- Night active pill #E6EDF3.
+- Arousal line #6FA8E8.
+- HC text secondary #E6E6E6 and muted #CCCCCC.
+- HC uncertainty band #9E9E9E (neutral grey, not yellow).
+- HC patterns: pain mild = dots, moderate = stripes, severe = solid. Attribution: pain = solid, stress = stripes, agitation = dots, rest = cross-hatch, unexplained = sparse hatch.
+- In HC, alert triangles and the alert banner are yellow (#FFE14D) with black text. HC has no red at all.
+
+**D‑31 Hotspot shapes.** Shape carries the state and colour only reinforces it (A8 sheet 2):
+
+| State | Shape |
+|---|---|
+| OK | Filled ring |
+| Degraded | Half ring |
+| Rejected | Crossed point |
+| Masked | Dashed outline + slash-lock |
+| Derived | Diamond |
+| Highlighted | Hover halo |
+
+**D‑32 Live-signals yellow action button.** The design doesn't say what it does. It opens the Timeline tab with the signal lanes expanded (the same history, full screen).
+
+**D‑33 Sign-in error.** Amber outline plus a warning icon, with the text "Staff ID or password not recognised", as in A11. In this prototype the credentials are never checked. The error variant can be seen only in `/dev/components`, so a real sign-in always succeeds as a visual-only flow.
