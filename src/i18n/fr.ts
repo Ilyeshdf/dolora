@@ -476,3 +476,4 @@ export const fr: Dict = {
     effects: { hrvDisabled: 'VFC désactivée', opioid: 'a priori douleur ×0,5 · 30 min' },
   },
 };
+

@@ -4,12 +4,16 @@
  * history the timeline needs. Phase 2 fills it from fixtures (A1–A4); Phase 4 builds it from the
  * WebSocket / simulator stream through the same type.
  */
-import type { AttributionShares } from '@/components/clinical/AttributionBar';
-import type { Route } from '@/components/ui/RouteIcon';
-import type { Mode, ConnectionKind, BaselineState } from '@/components/clinical/HeaderPills';
-import type { HotspotState } from '@/components/clinical/SensorHotspot';
-import type { FlagId } from '@/clinical/clinicalEffects';
-import type { EffectSet } from '@/engine/effects';
+import type { AttributionShares } from "@/components/clinical/AttributionBar";
+import type { Route } from "@/components/ui/RouteIcon";
+import type {
+  Mode,
+  ConnectionKind,
+  BaselineState,
+} from "@/components/clinical/HeaderPills";
+import type { HotspotState } from "@/components/clinical/SensorHotspot";
+import type { FlagId } from "@/clinical/clinicalEffects";
+import type { EffectSet } from "@/engine/effects";
 
 /** Engine-supplied text arrives in both languages (spec §5.1 `text_en` / `text_fr`). */
 export interface L10n {
@@ -17,18 +21,18 @@ export interface L10n {
   fr: string;
 }
 
-export type Status = 'OK' | 'DEGRADED' | 'REJECTED';
-export type SensorId = 'face' | 'ppg' | 'eda' | 'temp' | 'motion' | 'breathing';
+export type Status = "OK" | "DEGRADED" | "REJECTED";
+export type SensorId = "face" | "ppg" | "eda" | "temp" | "motion" | "breathing";
 
 export interface ContextItem {
   flag: FlagId;
   /** Where the chip comes from: a context entry, a logged event, or a profile field. */
-  source: 'context' | 'event' | 'profile';
+  source: "context" | "event" | "profile";
   entryId?: string;
   startedAt?: number;
   label: L10n;
   route: Route;
-  kind: 'persistent' | 'timed';
+  kind: "persistent" | "timed";
   /** Timed: seconds remaining / total. */
   remainingS?: number;
   totalS?: number;
@@ -36,17 +40,21 @@ export interface ContextItem {
 }
 
 export type AlertView =
-  | { kind: 'none' }
-  | { kind: 'alert'; id: string; rule: L10n; since: string; elapsed: string }
-  | { kind: 'acknowledged'; id: string; by: string; at: string }
-  | { kind: 'calibrating'; remainingS: number }
-  | { kind: 'advisory'; advisory: 'NMB' | 'UNAVAILABLE' | 'UNASSESSABLE' | 'WASHOUT' | 'GLUCOSE'; remainingS?: number };
+  | { kind: "none" }
+  | { kind: "alert"; id: string; rule: L10n; since: string; elapsed: string }
+  | { kind: "acknowledged"; id: string; by: string; at: string }
+  | { kind: "calibrating"; remainingS: number }
+  | {
+      kind: "advisory";
+      advisory: "NMB" | "UNAVAILABLE" | "UNASSESSABLE" | "WASHOUT" | "GLUCOSE";
+      remainingS?: number;
+    };
 
 export interface PainView {
   score: number;
   lo: number;
   hi: number;
-  trend: { direction: 'rising' | 'falling' | 'stable'; slopePerMin: number };
+  trend: { direction: "rising" | "falling" | "stable"; slopePerMin: number };
   episode: { since: string; elapsed: string } | null;
   coverageValidated: boolean;
   notAttributed?: boolean;
@@ -57,7 +65,7 @@ export interface DriverView {
   sensor: SensorId;
   title: L10n;
   subline: L10n;
-  direction: 'up' | 'down';
+  direction: "up" | "down";
   contribution: number;
   weight?: number;
   /** Raw value + unit and the patient's baseline, formatted per locale by the UI. */
@@ -78,9 +86,9 @@ export interface ChannelView {
 }
 
 export interface TelemetryView {
-  channel: 'ppg' | 'eda' | 'temp' | 'motion';
+  channel: "ppg" | "eda" | "temp" | "motion";
   value: L10n;
-  state: 'ok' | 'degraded' | 'rejected' | 'masked';
+  state: "ok" | "degraded" | "rejected" | "masked";
   sub?: L10n;
   rejectedReason?: L10n;
 }
@@ -98,14 +106,24 @@ export interface TimelineView {
   /** Window end ("Now"). */
   now: number;
   samples: TimelineSample[];
-  regions: { from: number; to: number; label: L10n; kind: 'event' | 'abstention' }[];
+  regions: {
+    from: number;
+    to: number;
+    label: L10n;
+    kind: "event" | "abstention";
+  }[];
   alerts: { t: number; acknowledged: boolean; label: L10n }[];
   /** Mode-compare ghosts: where the other mode would alert (A10). */
   ghosts: { t: number; label: L10n }[];
-  references: { t: number; scale: 'CPOT' | 'BPS' | 'NRS'; value: number }[];
+  references: { t: number; scale: "CPOT" | "BPS" | "NRS"; value: number }[];
   contextEvents: { t: number; label: L10n }[];
   /** Off-window reference marker at the left edge (A1 "CPOT 1 · 13:58 (35 min ago, before window)"). */
-  beforeWindow?: { scale: 'CPOT' | 'BPS' | 'NRS'; value: number; time: string; agoMin: number };
+  beforeWindow?: {
+    scale: "CPOT" | "BPS" | "NRS";
+    value: number;
+    time: string;
+    agoMin: number;
+  };
   annotation?: { from: number; to: number; text: L10n };
 }
 
@@ -119,7 +137,7 @@ export interface MonitorView {
   alert: AlertView;
   pain: PainView | null;
   lastValid: { score: number; ageS: number } | null;
-  abstainReasons: { kind: 'rejected' | 'degraded'; text: L10n }[];
+  abstainReasons: { kind: "rejected" | "degraded"; text: L10n }[];
   reducedSensors: L10n | null;
   arousalZ: number | null;
   attribution: AttributionShares | null;
@@ -127,9 +145,13 @@ export interface MonitorView {
   channels: Partial<Record<SensorId, ChannelView>>;
   telemetry: TelemetryView[];
   timeline: TimelineView;
-  lastReference: { scale: 'CPOT' | 'BPS' | 'NRS'; value: number; ageMin: number } | null;
+  lastReference: {
+    scale: "CPOT" | "BPS" | "NRS";
+    value: number;
+    ageMin: number;
+  } | null;
   /** Quality of the last marked baseline (task §3.2-F). */
-  baselineQuality: 'good' | 'provisional' | null;
+  baselineQuality: "good" | "provisional" | null;
   /** Clinical-context effects currently applied (footer chips, summaries, tests). */
   effects: EffectSet;
   calibrating: { remainingS: number; totalS: number } | null;

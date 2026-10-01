@@ -7,6 +7,7 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 ## §19.1 Layout defects
 
 **D‑0 Layout fixes.**
+
 - Single-line labels get `white-space: nowrap`. This covers the wordmark, "Audit trail", "Baseline: adaptive", "Possible unmanaged pain", "(1 min 12 s)", "Assess CPOT / BPS", "80% interval 4.3 – 8.1", "Compare modes", "vs this patient's baseline", "Save assessment", "Total 4 / 8", "Last valid 5.9 · 45 s ago" and the timeline legends.
 - Where space is tight, the container gives way (flex-shrink, truncation with a tooltip on secondary text only). The label itself never wraps.
 - Driver sublines get `line-clamp: 1` with a full-text tooltip.
@@ -18,6 +19,7 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 ## §19.2 Content and logic
 
 **D‑1 "Coverage not validated" badge (owner).**
+
 - Shown on the pain hero for **every patient whose profile is a real clinical patient** (care setting ICU or Post-op ward).
 - Hidden only in demo sessions flagged as healthy-volunteer (`profile.population = 'healthy_volunteer'`, which only demo mode can set).
 - This also applies to A1, which doesn't show it in the design.
@@ -27,22 +29,26 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 **D‑2 CPOT 4 vs 5 (A5 vs A3).** A5 is authoritative: CPOT 4 at 14:33:40. The A3 fixture uses "CPOT 4 · 14:33:40". The dialog's header time and the timeline marker come from the same `reference.t`, so they can't diverge.
 
 **D‑3 Baseline timing.**
+
 - Fixture order: "CPOT recorded 13:58:10 (total 1 / 8)", then "Baseline marked 13:58:30 (quality: good)".
-- *(Phase 2)* The total stays 1, as in A1 and A6. That still qualifies for a good baseline under D‑13 (CPOT ≤ 2).
+- _(Phase 2)_ The total stays 1, as in A1 and A6. That still qualifies for a good baseline under D‑13 (CPOT ≤ 2).
 - In the app, marking a baseline requires a recent assessment that qualifies (see D‑13), so the order is enforced by the UI.
 
 **D‑4 Arousal levels (owner).**
+
 - Only LOW / MODERATE / HIGH. "Elevated" is removed (A4 shows "↑ Moderate").
 - Thresholds on `index_z`: LOW < 1.0, MODERATE 1.0–2.0, HIGH ≥ 2.0. These are configurable expert priors.
 - FR: Faible / Modérée / Élevée.
 
 **D‑5 Drivers vs attribution (owner).**
+
 - **Top drivers** explain the **pain score** (Head A SHAP contributions). Title: "What moves the pain score", subtitle "vs this patient's baseline".
 - **Attribution card** explains **why the arousal is attributed** to pain / stress / agitation / rest / unexplained (Head B). Title: "Why is the body aroused?" (FR: « Pourquoi cette activation ? »).
 - Each card has an info tooltip with one sentence stating which question it answers.
-- In the stress state (A2), drivers show small contributions plus a muted note: "Arousal is high but contributes little to the pain score". *(Phase 2)* A2 leaves no free space in the drivers card, so the note is appended to the card's info tooltip and screen-reader label whenever arousal is "not attributed to pain".
+- In the stress state (A2), drivers show small contributions plus a muted note: "Arousal is high but contributes little to the pain score". _(Phase 2)_ A2 leaves no free space in the drivers card, so the note is appended to the card's info tooltip and screen-reader label whenever arousal is "not attributed to pain".
 
 **D‑6 Red (owner).**
+
 - Saturated red (`--alert`) = alert semantics only: the alert banner, timeline alert triangles, and the alert badge on Unit overview bed cards.
 - Never decoration, never form errors, never stale values, never sensor states.
 - Form validation is amber (`--advisory-*`).
@@ -50,33 +56,36 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 - A lint rule (a grep in CI) fails if `--alert` is used outside an allow-listed set of components.
 
 **D‑7 Channel states (owner).**
+
 - The schema gets `MASKED` (by clinical context; `masked_by: Flag[]`) and a `DERIVED` signal marker (`derived: {signal, source}`, e.g. breathing derived from PPG).
 - Visual encoding:
 
-  | State | Look |
-  |---|---|
-  | OK | Filled teal |
-  | DEGRADED | Amber ring |
-  | REJECTED | Grey, crossed out |
-  | MASKED | Dashed outline + slash-lock icon |
-  | DERIVED | Diamond |
+  | State    | Look                             |
+  | -------- | -------------------------------- |
+  | OK       | Filled teal                      |
+  | DEGRADED | Amber ring                       |
+  | REJECTED | Grey, crossed out                |
+  | MASKED   | Dashed outline + slash-lock icon |
+  | DERIVED  | Diamond                          |
 
 - The legend always lists all five.
 
 **D‑8 "Assessment unavailable" header pill.** Formally part of the header spec. It's a slate StatusPill, shown when `status = REJECTED` (including CONTEXT_UNASSESSABLE), placed between the mode control and the connection pill. It's not red.
 
-**D‑9 Abstention card shows the latest manual assessment.** Below the reasons it shows "Last CPOT 4 · 3 min ago" (or BPS/NRS), with the same freshness rules. This fixes 19.2‑9 and also covers §20.1. *(Phase 2 revision)* The normal hero has no room for this line at 1920×1080 once the D‑1 badge is added. There, the last reference is shown on the timeline instead (an in-window diamond, or the "‹ CPOT 1 · 13:58 (35 min ago, before window)" edge marker).
+**D‑9 Abstention card shows the latest manual assessment.** Below the reasons it shows "Last CPOT 4 · 3 min ago" (or BPS/NRS), with the same freshness rules. This fixes 19.2‑9 and also covers §20.1. _(Phase 2 revision)_ The normal hero has no room for this line at 1920×1080 once the D‑1 badge is added. There, the last reference is shown on the timeline instead (an in-window diamond, or the "‹ CPOT 1 · 13:58 (35 min ago, before window)" edge marker).
 
 **D‑10 Calibration duration (owner).** 90 s by default, configurable in Settings (60–180 s). In demo mode the time scale compresses it.
 
 ## Other conflicts and gaps
 
 **D‑11 Simulator fallback vs live-mode safeguard.**
+
 - §13 #10 says "reconnect ×3 then simulator fallback". The task overrides this.
 - In **live** mode: reconnect with backoff (Reconnecting pill, pulsing amber). After that it shows **"Connection lost — data paused"**: the last values are dimmed with their age and hidden after 300 s. It **never** switches to simulated data.
 - The simulator runs **only** in explicit demo mode, which shows a persistent "SIMULATED DATA" watermark and the "Simulator" connection pill.
 
 **D‑12 Assessments tab: disagreement rule.**
+
 - The task brief says "differ by ≥ 3 points". Comparing different scales requires normalising each reference to 0–10:
   - NRS: as is;
   - CPOT: total × 10/8;
@@ -86,6 +95,7 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 - The normalisation is shown in a tooltip so the comparison is transparent.
 
 **D‑13 Baseline quality.**
+
 - **Good** requires all three checklist items: patient calm; last CPOT/BPS ≤ 2 or NRS ≤ 3, taken within 30 min; signals OK.
 - If any item fails or the assessment is missing/old, the popover offers "Assess now" (primary) or "Mark as provisional baseline".
 - The quality shows in the header baseline pill. "Provisional" is amber text on neutral, not red.
@@ -93,26 +103,29 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 
 **D‑14 Which reference scale is offered first.**
 
-| Communication | Airway | Offered first |
-|---|---|---|
-| Can self-report | any | NRS |
-| Intermittent / cannot self-report | intubated | BPS (CPOT with the ventilator-compliance item as the second tab) |
-| Cannot self-report | not intubated | CPOT (vocalization item) |
-| Intermittent | not intubated | NRS, with "switch to CPOT" one tap away |
+| Communication                     | Airway        | Offered first                                                    |
+| --------------------------------- | ------------- | ---------------------------------------------------------------- |
+| Can self-report                   | any           | NRS                                                              |
+| Intermittent / cannot self-report | intubated     | BPS (CPOT with the ventilator-compliance item as the second tab) |
+| Cannot self-report                | not intubated | CPOT (vocalization item)                                         |
+| Intermittent                      | not intubated | NRS, with "switch to CPOT" one tap away                          |
 
 The user can always switch scales.
 
 **D‑15 Storage.**
+
 - §14's "no localStorage" constraint applied to claude.ai artifacts. This is a local Vite app.
 - Even so, only display preferences (theme, language, time scale, WS URL) are persisted.
 - Profiles, context, references and audit stay in memory (data minimisation). The audit is exported as JSON on demand.
 
 **D‑16 Tailwind and icons.** §14's "no arbitrary values / lucide 0.383" limits also came from artifacts. Here the app uses current lucide-react and Tailwind theme extensions mapped to CSS variables.
+
 - Colours always come from tokens.
 - Arbitrary values are kept to one-off geometry measured from the artboards (e.g. the 34 px dialog title, the 38 px logo tile).
-- *(Phase 1)* Tailwind is v3.4, so `tailwind-merge` is pinned to **v2**. v3 assumes Tailwind v4 semantics and silently dropped `outline` and the custom `border-theme` width; `src/lib/cn.test.ts` guards this.
+- _(Phase 1)_ Tailwind is v3.4, so `tailwind-merge` is pinned to **v2**. v3 assumes Tailwind v4 semantics and silently dropped `outline` and the custom `border-theme` width; `src/lib/cn.test.ts` guards this.
 
 **D‑17 Alerts while locked or with a dialog open.**
+
 - Monitoring continues while the session is locked.
 - A new alert shows on the lock overlay as a minimal strip ("Bed 4 · Possible unmanaged pain · Unlock to view"), with no clinical detail beyond that.
 - ~~An alert during the CPOT dialog goes into the alert slot, which stays visible above the scrim.~~ Superseded by **D‑42**: the dialog sits over everything, as in A5.
@@ -127,6 +140,7 @@ The user can always switch scales.
 **D‑21 BPS tab.** Built following the CPOT dialog pattern: 3 items × 1–4 (facial expression, upper limbs, compliance with ventilation, or vocalization if not intubated), total 3–12, "Pain likely (> 5)". If NMB is active, both tabs show the note "Behavioural items cannot be scored validly under neuromuscular blockade".
 
 **D‑22 Tool rail behaviour.**
+
 - Sensor labels: toggles hotspot labels.
 - Drivers: toggles callouts and leader lines.
 - Front/back: switches the silhouette view. Only the front carries sensors in this prototype; the back shows "No sensors on this view".
@@ -138,25 +152,29 @@ The user can always switch scales.
 
 **D‑25 Insulin-treated diabetes prompt.** "Consider checking glucose" is phrased as an assessment. It appears only when there is unexplained arousal (attribution.unexplained ≥ 0.25 or the unexplained-arousal flag) **and** an EDA rise. Never a treatment.
 
-**D‑26 Mode change source of truth.** Changing the care setting in the profile sets the *default* mode and requires the same confirmation as the ICU/Ward control. Both write one `mode_change` audit entry stating old → new rule.
+**D‑26 Mode change source of truth.** Changing the care setting in the profile sets the _default_ mode and requires the same confirmation as the ICU/Ward control. Both write one `mode_change` audit entry stating old → new rule.
 
 ## Decisions from the design images (`design/`)
 
 **D‑27 Drawer geometry.**
+
 - A6 shows a 560 px drawer that covers the alert-slot buttons. The task brief requires 520 px and says the drawer must never cover the alert slot or the hero.
 - Resolution: both drawers (audit trail, patient profile) are 520 px wide and **start below the alert slot**. They are anchored at the top of the main grid and run to the footer.
 - The scrim covers only the centre and right columns. The header, context bar, alert slot, hero and footer stay visible and interactive, so Acknowledge and Assess are always reachable.
 
 **D‑28 Nav tabs.**
+
 - A1 and A12 show a **Unit** tab; A2–A10 don't. Resolution: Unit · Monitor · Timeline · Assessments · Audit trail on every bed screen.
 - On Unit overview, the bed-specific header items are hidden: no patient pill, and no mode/baseline controls (A12 shows them, but they'd be ambiguous with 8 beds). The header there keeps unit-level items only: connection, theme, language, help and user.
 
 **D‑29 Calibration is a Monitor state, not a route.**
+
 - A9 is the Monitor layout with `baseline.state = CALIBRATING`. The hero is a progress ring ("0:54 / 1:30"); the alert slot shows the sky "info" variant with time remaining; a "Signal check" card sits on the body stage; the other cards show "Available after calibration".
 - The `/calibration` route is dropped. Monitor goes to normal display automatically when calibration completes.
 - A9's header shows Ward selected while the patient pill says ICU. That's a mock-up inconsistency: the mode follows the care setting (ICU) unless the clinician changes it.
 
 **D‑30 Colours not in the spec's token table.** Taken from A8 sheet 4:
+
 - Night active pill #E6EDF3.
 - Arousal line #6FA8E8.
 - HC text secondary #E6E6E6 and muted #CCCCCC.
@@ -166,14 +184,14 @@ The user can always switch scales.
 
 **D‑31 Hotspot shapes.** Shape carries the state and colour only reinforces it (A8 sheet 2):
 
-| State | Shape |
-|---|---|
-| OK | Filled ring |
-| Degraded | Half ring |
-| Rejected | Crossed point |
-| Masked | Dashed outline + slash-lock |
-| Derived | Diamond |
-| Highlighted | Hover halo |
+| State       | Shape                       |
+| ----------- | --------------------------- |
+| OK          | Filled ring                 |
+| Degraded    | Half ring                   |
+| Rejected    | Crossed point               |
+| Masked      | Dashed outline + slash-lock |
+| Derived     | Diamond                     |
+| Highlighted | Hover halo                  |
 
 **D‑32 Live-signals yellow action button.** The design doesn't say what it does. It opens the Timeline tab with the signal lanes expanded (the same history, full screen).
 
@@ -183,19 +201,20 @@ The user can always switch scales.
 
 **D‑34 Token values not on the A8 token sheet.** Sampled from the artboards where possible; otherwise assumed. All are marked in `src/styles/tokens.css`.
 
-| Token | Projector | Night | HC | Source |
-|---|---|---|---|---|
-| Attribution stress / agitation / rest | #8F86CC / #E3A27F / #7D8894 | #8F85CB / #D9967A / #6B7784 | white + pattern | sampled A1, A2 |
-| Attribution pain | ink | #E6EDF3 (light segment) | white, solid | sampled A2 |
-| Arousal line (projector) | #2F6FB8 | #6FA8E8 | white, dashed | sampled A1; sheet for Night |
-| Body silhouette fill | #E6EBF1 | #1A2129 | black + white stroke | sampled A1, A2 |
-| Scale track / hover row | #EEF1F5 / #F1F5FA | #242C36 / #1E2530 | black / #1A1A1A | sampled A1 |
-| Night interactive accent | — | #6FA8E8 | — | **assumption** (not on the sheet) |
-| Night advisory fill / border / text | — | #2B2414 / #D9A441 / #F0C877 | — | **assumption** (no Night advisory artboard) |
-| HC advisory | — | — | black fill, 2 px yellow border, white text | **assumption** |
-| Card outline | none (borderless on light canvas) | #242C36 | 2 px white | A1 / A2 / A7 |
+| Token                                 | Projector                         | Night                       | HC                                         | Source                                      |
+| ------------------------------------- | --------------------------------- | --------------------------- | ------------------------------------------ | ------------------------------------------- |
+| Attribution stress / agitation / rest | #8F86CC / #E3A27F / #7D8894       | #8F85CB / #D9967A / #6B7784 | white + pattern                            | sampled A1, A2                              |
+| Attribution pain                      | ink                               | #E6EDF3 (light segment)     | white, solid                               | sampled A2                                  |
+| Arousal line (projector)              | #2F6FB8                           | #6FA8E8                     | white, dashed                              | sampled A1; sheet for Night                 |
+| Body silhouette fill                  | #E6EBF1                           | #1A2129                     | black + white stroke                       | sampled A1, A2                              |
+| Scale track / hover row               | #EEF1F5 / #F1F5FA                 | #242C36 / #1E2530           | black / #1A1A1A                            | sampled A1                                  |
+| Night interactive accent              | —                                 | #6FA8E8                     | —                                          | **assumption** (not on the sheet)           |
+| Night advisory fill / border / text   | —                                 | #2B2414 / #D9A441 / #F0C877 | —                                          | **assumption** (no Night advisory artboard) |
+| HC advisory                           | —                                 | —                           | black fill, 2 px yellow border, white text | **assumption**                              |
+| Card outline                          | none (borderless on light canvas) | #242C36                     | 2 px white                                 | A1 / A2 / A7                                |
 
 **D‑35 Form controls (no artboard except A11 inputs and the A5 note/switch).**
+
 - Fields are 52 px high with radius 14 and a 1 px border (2 px in HC). Labels sit above the field, in 16 px medium.
 - Required fields show "· required" in muted text.
 - Validation messages are amber with a warning icon (never red). The invalid field gets an amber border plus `aria-invalid`.
@@ -206,34 +225,40 @@ The user can always switch scales.
 - PIN: four 64×72 password cells. Focus advances on each digit and Backspace steps back.
 
 **D‑36 Toast (not designed).**
+
 - Uses the dark active-pill colour with radius 12, a check icon, title and description, an optional underlined action, and a close button.
 - Placed bottom-centre above the footer.
 - Lasts 10 s when it carries an Undo action (task §3.2‑B), otherwise 5 s. Radix Toast supplies the live region.
 
 **D‑37 Persistent chips show "Persistent" when there's room.** A4's drug chips omit the suffix, while A1's ventilation chip shows it.
-- *(Phase 2 revision)* The suffix shows when there are at most two chips. With three or more (A4) it's dropped so "+ Add context" doesn't collide with the route legend.
+
+- _(Phase 2 revision)_ The suffix shows when there are at most two chips. With three or more (A4) it's dropped so "+ Add context" doesn't collide with the route legend.
 - Every chip tooltip states "Persistent" or the time left, so the information is never lost.
 - Timed chips always show "· m:ss left" and a countdown ring.
 
 **D‑38 Driver row layout (fixes the A1/A4 wrap defect).**
+
 - The title gets the full row and is truncated to one line, with the full text in `title` and the hover tooltip.
 - Contribution and bar move to the sub-line row, which is where they already sit visually in the design.
 - Bar: the zero tick sits at 30 % and ±0.5 fills the rest, so a negative contribution (e.g. −0.03) extends left.
 - A degraded source adds an amber warning icon after the title and "sensor degraded (0.52)" in the sub-line.
 
 **D‑39 Gauge geometry.**
+
 - A ~200° arc, open at the bottom, with a 14 px stroke.
 - The arousal range is z 0–4, with a tick at the HIGH threshold (z = 2, top centre).
 - The pain range is 0–10. The 80 % upper bound is a thin outer arc in the band grey, as in A1.
 - In HC the arousal arc is dashed so it isn't distinguished from pain by colour alone.
 
 **D‑40 `/dev/components` structure.**
+
 - Five tabs, set by `?sheet=1…4|extras`. Tabs 1–4 rebuild the four A8 sheets from live components, so each can be compared with its artboard; hero cards are shown at the sheet's miniature scale with CSS `zoom`. The fifth tab holds the patterns for undesigned screens.
 - Theme and language switch the whole page. The FR hero variant and the HC attribution and hotspot columns are rendered in a scoped theme or language (`data-theme` on a wrapper, `LangScope`).
 - The colour-token swatches read the computed CSS variable values, so the page always shows the real tokens.
-- The token *names* on sheet 4 are technical identifiers and are not translated. Every other string goes through the EN/FR dictionary.
+- The token _names_ on sheet 4 are technical identifiers and are not translated. Every other string goes through the EN/FR dictionary.
 
 **D‑41 Screenshot tooling.**
+
 - `npm run screenshots` uses `playwright-core` with the locally installed Edge/Chrome, so no browser download is needed. It captures every sheet at 1920×1080 and 1366×768 in all three themes and fails on any console error or warning.
 - `scripts/overlay-check.mjs` smoke-tests the drawer, dialog, popover, toast, tooltip, stepper and select by keyboard and pointer.
 - Screenshots are git-ignored; regenerate them locally.
@@ -244,31 +269,33 @@ The user can always switch scales.
 
 **D‑43 Compact density (≤ 1599 px wide or ≤ 899 px high, e.g. 1366×768).** The 1920×1080 layout scaled down would push text below 13 px (§10.2), so compact mode changes what is shown instead:
 
-| Area | Compact behaviour |
-|---|---|
-| Columns | 350 / fluid / 370 px, 16 px gaps and gutters |
-| Header | Patient pill shows ID + bed only; ICU/Ward rule text and Baseline pill hidden (the rule is in the alert banner, the baseline state in the audit) |
-| Context bar | Label and route legend hidden (chips carry their route icon) |
-| Body map | Figure scaled by the column width **and** the height left above the timeline, so every hotspot stays visible. Labels, callouts, leaders, legend and floor grid hidden; the drivers card carries the same information and the hotspots keep their tooltips |
-| Hero | 80 px numeral; the abstention icon is hidden |
-| Arousal card | Smaller gauges (text stays ≥ 13 px); caption hidden |
-| Drivers card | Subtitle hidden; rows scroll inside the card |
-| Live signals | 2×2 grid of values + state (no traces) |
-| Timeline | Short legend labels; legend may wrap to two lines |
-| Columns | The side columns may scroll vertically if content still exceeds the height. The page itself never scrolls |
+| Area         | Compact behaviour                                                                                                                                                                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Columns      | 350 / fluid / 370 px, 16 px gaps and gutters                                                                                                                                                                                                              |
+| Header       | Patient pill shows ID + bed only; ICU/Ward rule text and Baseline pill hidden (the rule is in the alert banner, the baseline state in the audit)                                                                                                          |
+| Context bar  | Label and route legend hidden (chips carry their route icon)                                                                                                                                                                                              |
+| Body map     | Figure scaled by the column width **and** the height left above the timeline, so every hotspot stays visible. Labels, callouts, leaders, legend and floor grid hidden; the drivers card carries the same information and the hotspots keep their tooltips |
+| Hero         | 80 px numeral; the abstention icon is hidden                                                                                                                                                                                                              |
+| Arousal card | Smaller gauges (text stays ≥ 13 px); caption hidden                                                                                                                                                                                                       |
+| Drivers card | Subtitle hidden; rows scroll inside the card                                                                                                                                                                                                              |
+| Live signals | 2×2 grid of values + state (no traces)                                                                                                                                                                                                                    |
+| Timeline     | Short legend labels; legend may wrap to two lines                                                                                                                                                                                                         |
+| Columns      | The side columns may scroll vertically if content still exceeds the height. The page itself never scrolls                                                                                                                                                 |
 
 **D‑44 Fixture reconciliations (A1–A6 demo values).**
-- *Clock:* fixtures use a fixed day and UTC formatting so screenshots are deterministic. Phase 4 switches to the live clock and device-local time (D‑24).
-- *A1 suctioning:* the chip reads "1:24 left" and the timeline region starts 14:30:05 (the A6 audit time), as in the designs. With a 2-minute flag these two are inconsistent. Phase 4 derives both from one start time and duration.
-- *A6 trail:* A6 shows "Alert acknowledged 14:32:52" while A1's banner is still red. The fixture trail omits that entry; pressing Acknowledge appends it.
-- *A2 Night:* "Family visit · 14 min left" means a 20-minute flag started six minutes earlier, so the region starts at 20:34:20.
-- *A4 tool rail:* starts with the Drivers layer off, as drawn.
+
+- _Clock:_ fixtures use a fixed day and UTC formatting so screenshots are deterministic. Phase 4 switches to the live clock and device-local time (D‑24).
+- _A1 suctioning:_ the chip reads "1:24 left" and the timeline region starts 14:30:05 (the A6 audit time), as in the designs. With a 2-minute flag these two are inconsistent. Phase 4 derives both from one start time and duration.
+- _A6 trail:_ A6 shows "Alert acknowledged 14:32:52" while A1's banner is still red. The fixture trail omits that entry; pressing Acknowledge appends it.
+- _A2 Night:_ "Family visit · 14 min left" means a 20-minute flag started six minutes earlier, so the region starts at 20:34:20.
+- _A4 tool rail:_ starts with the Drivers layer off, as drawn.
 
 **D‑45 Compare-modes ghosts (A10 preview).** The toggle works now. Until the alert engine exists (Phase 4), the other mode's alert is approximated as 70 s later (Ward) or earlier (ICU) than the actual alert. The approximation lives in one function (`ghostsFor`), and Phase 4 replaces it with the real rule evaluated on the history.
 
 **D‑46 Audit filters.** "Baseline marked" is filed under **Assessments**: it is a clinician reference action that follows a CPOT/BPS. Export is JSON via Blob, newest first, with English action labels and ISO times.
 
 **D‑47 French typography.**
+
 - FR strings use a no-break space before ":", ";", "?" and "!", and a narrow no-break space before "%". So "80 %" and "Référence : adaptative" never break badly.
 - ESLint's `no-irregular-whitespace` skips strings and templates for this reason. It still applies to code.
 
@@ -277,6 +304,7 @@ The user can always switch scales.
 **D‑49 Monitor state URLs (Phase 2 only).** `/bed/4/monitor?state=pain|stress|abstain|degraded`, plus `&dialog=assessment` (`&prefill=a5` reproduces the A5 selections), `&panel=audit` and `&hover=<driver id>` (shows the hover tooltip and halo as in A1). These select design fixtures. In Phase 4 the same screen renders live or simulated data.
 
 **D‑50 Layout guards.** `npm run screenshots` fails on:
+
 - page scroll or a clipped footer;
 - content overflowing any card;
 - any `.nowrap` label that renders on more than one line.
@@ -287,21 +315,22 @@ It checks every state at 1920×1080 and 1366×768, in EN and FR and in all three
 
 **D‑51 Assumed modifiers.** Values not given by spec §4.2/§4.3 are flagged `assumption: true` in `src/clinical/clinicalEffects.ts`. They are expert priors to be validated, as the spec requires for all modifiers.
 
-| Flag | Assumed effect |
-|---|---|
-| Inotrope / β-agonist | HR 0.4, HRV 0.6, HR rise expected |
-| Propofol / benzodiazepine | face 0.7, motion 0.8 |
-| Opioid infusion | pain prior ×0.7 |
-| Vasodilator | pulse amplitude 0.6, temp 0.6 |
-| PAD / Raynaud's | pulse amplitude 0.5, temp 0.5 |
-| Hypothermia | motion 0.5, pulse amplitude 0.6, temp 0.5 |
-| Wound care | pain prior ×2, 5 min |
-| Gentle touch | pain prior ×0.7, rest ×1.3, 2 min |
-| Awakening trial | stress and agitation priors ×1.5, 20 min |
-| Surgical prior | ×1.3 thoracic / upper abdominal / trauma; ×1.2 orthopaedic / cardiac; ×1.1 neuro; first 72 h after surgery |
-| Skin problem at a site | EDA 0.6; PPG site: pulse 0.6, HR 0.8; temp site 0.7 |
+| Flag                      | Assumed effect                                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Inotrope / β-agonist      | HR 0.4, HRV 0.6, HR rise expected                                                                          |
+| Propofol / benzodiazepine | face 0.7, motion 0.8                                                                                       |
+| Opioid infusion           | pain prior ×0.7                                                                                            |
+| Vasodilator               | pulse amplitude 0.6, temp 0.6                                                                              |
+| PAD / Raynaud's           | pulse amplitude 0.5, temp 0.5                                                                              |
+| Hypothermia               | motion 0.5, pulse amplitude 0.6, temp 0.5                                                                  |
+| Wound care                | pain prior ×2, 5 min                                                                                       |
+| Gentle touch              | pain prior ×0.7, rest ×1.3, 2 min                                                                          |
+| Awakening trial           | stress and agitation priors ×1.5, 20 min                                                                   |
+| Surgical prior            | ×1.3 thoracic / upper abdominal / trauma; ×1.2 orthopaedic / cardiac; ×1.1 neuro; first 72 h after surgery |
+| Skin problem at a site    | EDA 0.6; PPG site: pulse 0.6, HR 0.8; temp site 0.7                                                        |
 
 **D‑52 Demo composition heuristics** (`src/engine/compose.ts`). The real model applies Head A/B and conformal intervals; the demo engine applies these transparent rules:
+
 - **Attribution:** Saerens prior shift, then the masked class (agitation, when motion is masked) is removed and the rest renormalised. Hyperactive delirium moves 10 % of the mass to "unexplained".
 - **Score:** `head × √(p_pain / p_pain_without_context)`. The square root damps the effect.
 - **Interval:** widened by `1 + 0.3 × fully-masked sensors + 0.25 × Σ(1 − w)` over HR, pulse, EDA and temperature, capped at 2.2.
@@ -309,77 +338,87 @@ It checks every state at 1920×1080 and 1366×768, in EN and FR and in all three
 - **Weight badge:** shown on a driver when its feature weight is 0.6 or less.
 - **CONTEXT_UNASSESSABLE:** EDA, face and motion all masked, or EDA and HR both masked.
 - **A4 differences from the artboard, now computed from the §4.3 matrix:**
-  - A *Controlled ventilation* chip appears, because NMB implies controlled ventilation.
-  - Temperature is *degraded* (norepinephrine temp weight 0.5).
+  - A _Controlled ventilation_ chip appears, because NMB implies controlled ventilation.
+  - Temperature is _degraded_ (norepinephrine temp weight 0.5).
   - PPG reliability is 0.23, not 0.28.
   - The HR weight badge reads ×0.24, not ×0.3.
 
 **D‑53 Fixtures as raw output + context.**
+
 - Each design state is stored as raw engine output plus its seeded clinical context. The raw values are back-computed from the artboard numbers through the same effect set, so A1–A4 render exactly as designed and still react to new input.
 - A1's suctioning is two passes (14:30:05 and 14:32:16). This resolves the D‑44 chip-versus-band inconsistency: the chip counts down the second pass and the band spans both.
 - A2 uses an intubated, spontaneous-mode airway, matching A2's lack of a ventilation chip.
 
 **D‑54 Audit details.**
-- Profile edits are filed under the *Context* filter.
+
+- Profile edits are filed under the _Context_ filter.
 - Retroactive entries show "entered HH:MM:SS".
 - Removals keep the record, shown struck through with the reason.
-- Undo (10 s) is an *inverse operation*, not a snapshot restore. Undoing an addition is recorded as "removed — entered in error", and undoing an edit as "Edit undone". Later unrelated edits are never reverted.
+- Undo (10 s) is an _inverse operation_, not a snapshot restore. Undoing an addition is recorded as "removed — entered in error", and undoing an edit as "Edit undone". Later unrelated edits are never reverted.
 
 **D‑55 One source for medications and conditions.**
+
 - They are context entries, edited from the context bar, the profile drawer and the wizard alike.
 - Choosing "None of these" sets `medsReviewed` / `conditionsReviewed`.
 - "Profile incomplete" lists the missing recommended items: admission reason, RASS, CAM-ICU, reference score, medications reviewed and conditions reviewed. It never blocks monitoring or alerts.
 
 **D‑56 Reference scales.**
-- NRS quick entry is an *NRS tab* in the same assessment dialog (one place for every reference). It has 0–10 chips and a severity label; there is no "pain likely" threshold, because self-report is the ground truth.
+
+- NRS quick entry is an _NRS tab_ in the same assessment dialog (one place for every reference). It has 0–10 chips and a severity label; there is no "pain likely" threshold, because self-report is the ground truth.
 - The scale offered first follows D‑14. Every assessment has an "Assessed" time picker for retroactive entry.
 - In the wizard, the latest reference is entered inline because the dialog lives on the monitor.
 - BPS counts as baseline-eligible at ≤ 4 (≈ CPOT 0–2), since BPS cannot be ≤ 2.
 
 **D‑57 Baseline checklist.**
+
 - **Calm:** arousal z < 1, and RASS between −2 and +1 if recorded.
 - **Low reference:** a CPOT/BPS/NRS taken within 30 min that passes D‑56.
 - **Signals OK:** status OK.
 - All three pass → "Mark as baseline" (good). Otherwise "Assess now" (when the reference is missing or stale) or "Mark as provisional baseline".
 - Marking is disabled during a vasopressor washout.
-- Finishing calibration marks a *good* baseline automatically (system entry).
+- Finishing calibration marks a _good_ baseline automatically (system entry).
 
 **D‑58 Rules beyond the two listed contradictions.**
 
-| Rule | Severity |
-|---|---|
-| NMB requires controlled ventilation | block |
-| NMB + self-report | block |
-| Fever + hypothermia | block |
-| Ward + controlled ventilation | confirm |
-| Dose change without a vasopressor | confirm |
-| CONTEXT_UNASSESSABLE before saving | confirm |
+| Rule                                | Severity |
+| ----------------------------------- | -------- |
+| NMB requires controlled ventilation | block    |
+| NMB + self-report                   | block    |
+| Fever + hypothermia                 | block    |
+| Ward + controlled ventilation       | confirm  |
+| Dose change without a vasopressor   | confirm  |
+| CONTEXT_UNASSESSABLE before saving  | confirm  |
 
 The listed contradictions keep their spec severities: self-report + RASS ≤ −4 is confirm; not intubated + controlled ventilation is block. The care setting and the ICU/Ward mode commit together, only after every confirmation.
 
 **D‑59 Time entry.**
+
 - The bed clock ticks from the fixture time; `?freeze=1` freezes it for screenshots.
 - "Custom" time is HH:MM within the past 24 h; a time later than now means yesterday.
 - Time-of-surgery quick picks map to mid-points: < 6 h → 3 h, 6–24 h → 15 h, 1–3 days → 48 h, > 3 days → 96 h.
 
 **D‑60 Chips derived from the profile.**
+
 - Controlled ventilation (from airway), hyperactive delirium, and fever/hypothermia (from core temperature) appear as chips, but they're edited in the profile ("Edit in profile"), not removed from the bar.
 - The surgical prior and skin-site effects appear only in the effects footer and summaries, to keep the bar short.
 
 **D‑61 Data minimisation.**
+
 - There are no names, dates of birth or doses anywhere; drug class and start time only.
 - A vasopressor dose change is an event without an amount.
 - The free-text note stays on the workstation: `profileToWire` drops it from `patient_profile`.
 
 **D‑62 Command palette (Ctrl+K).**
+
 - Groups: Add context · Log event (now) · Update profile (jumps to a section) · Assess (CPOT/BPS, NRS) · Other (baseline, audit).
 - A "log now" command that would hit a rule warning opens the add-context flow instead, so it is never saved silently.
 
 **D‑63 Context bar density.**
+
 - "+ Add context" and "Log event" sit outside the scrolling chip list, so they're always reachable.
 - In compact mode they become icon-only, keeping accessible names.
 - With three or more chips the route legend hides; every chip still carries its route icon and tooltip.
 
-**D‑64 Glucose prompt.** Shown only when insulin-treated diabetes is active, the unexplained share is ≥ 0.2, arousal z ≥ 1 and tonic EDA is rising. The text recommends an *assessment* ("consider checking glucose"), never a treatment.
+**D‑64 Glucose prompt.** Shown only when insulin-treated diabetes is active, the unexplained share is ≥ 0.2, arousal z ≥ 1 and tonic EDA is rising. The text recommends an _assessment_ ("consider checking glucose"), never a treatment.
 
 **D‑65 Outbound bus.** `src/data/outbound.ts` records every typed message (`patient_profile`, `context_flag`, `event`, `cpot_entry` / `bps_entry` / `nrs_entry`, `mark_baseline`, `mode_change`). Phase 4 subscribes the WebSocket adapter (live) or the simulator (demo) to the same bus, and the simulator reuses `deriveEffects` + `composeView`.
