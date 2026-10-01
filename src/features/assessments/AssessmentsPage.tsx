@@ -185,23 +185,23 @@ export function AssessmentsPage() {
               {records.map((r) => {
                 const tone = scoreTone(r.value, r.max);
                 return (
-                  <Card key={r.id} padding="none" className="overflow-hidden">
-                    <div className="flex items-stretch">
+                  <Card key={r.id} padding="none" className="flex overflow-hidden">
+                    <div className="flex w-full items-stretch">
                       {/* Score badge */}
                       <div
-                        className="flex w-20 shrink-0 flex-col items-center justify-center"
+                        className="flex w-20 shrink-0 flex-col items-center justify-center py-2"
                         style={{ background: `rgb(var(--${tone}) / 0.12)` }}
                       >
                         <p
-                          className="text-3xl font-bold tabular"
+                          className="text-3xl font-bold leading-tight tabular"
                           style={{ color: `rgb(var(--${tone}))` }}
                         >
                           {r.value}
                         </p>
-                        <p className="text-xs text-muted">/ {r.max}</p>
+                        <p className="text-xs leading-tight text-muted">/ {r.max}</p>
                       </div>
                       {/* Details */}
-                      <div className="flex-1 px-4 py-3">
+                      <div className="flex flex-1 flex-col justify-between px-4 py-3 min-w-0">
                         <div className="flex items-center justify-between">
                           <span
                             className="rounded-full px-2 py-0.5 text-xs font-bold"
@@ -216,9 +216,15 @@ export function AssessmentsPage() {
                             {fmtTime(r.t)}
                           </span>
                         </div>
-                        {r.note && (
-                          <p className="mt-1.5 text-sm text-muted">{r.note}</p>
-                        )}
+                        <p
+                          className={cn(
+                            "mt-1.5 text-sm text-muted truncate",
+                            !r.note && "invisible select-none"
+                          )}
+                          title={r.note}
+                        >
+                          {r.note || "\u00A0"}
+                        </p>
                         <div className="mt-2 flex items-center gap-2">
                           <div className="h-1.5 flex-1 rounded-full bg-track">
                             <div

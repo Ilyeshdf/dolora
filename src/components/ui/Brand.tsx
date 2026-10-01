@@ -10,19 +10,21 @@ export function DeltaGlyph({ className }: { className?: string }) {
   );
 }
 
-/** ALGOS‑Δ wordmark: dark tile with yellow triangle + text. Never wraps (D-0). */
+/** Dolora wordmark: logo image + text. Never wraps (D-0). */
 export function Wordmark({ className, compact }: { className?: string; compact?: boolean }) {
   const t = useT();
   return (
-    <div className={cn('nowrap flex items-center gap-3', className)} aria-label={t.app.name} role="img">
-      <span className="grid h-[38px] w-[38px] place-items-center rounded-[10px] bg-[#111418] hc:border-2 hc:border-ink hc:bg-card">
-        <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5">
-          <path d="M12 4.5 L20 19 H4 Z" fill="none" stroke="rgb(var(--action))" strokeWidth="2.2" strokeLinejoin="round" />
-        </svg>
-      </span>
+    <div className={cn('nowrap flex items-center gap-2.5', className)} aria-label={t.app.name} role="img">
+      <img
+        src="/dolora-logo.png"
+        alt=""
+        aria-hidden
+        className="h-[38px] w-[38px] rounded-[10px] object-contain"
+        style={{width:"75px",height:"75px"}}
+      />
       {!compact && (
         <span className="flex items-baseline text-[23px] font-extrabold tracking-[-0.01em] text-ink">
-          ALGOS‑<DeltaGlyph />
+          Dolora
         </span>
       )}
     </div>
@@ -35,7 +37,7 @@ export function Footer({ className }: { className?: string }) {
   return (
     <footer className={cn('flex items-center justify-between gap-6 px-8 text-xs text-muted', className)}>
       <p className="min-w-0">{t.app.disclaimer}</p>
-      <p className="nowrap shrink-0">{t.app.model('algos-delta-0.3')}</p>
+      <p className="nowrap shrink-0">{t.app.model('dolora-0.3')}</p>
     </footer>
   );
 }
