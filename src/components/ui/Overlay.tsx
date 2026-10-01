@@ -154,3 +154,62 @@ export function PopoverPanel({ children, className }: { children: ReactNode; cla
     </div>
   );
 }
+
+/* ---------- Right drawer, non-modal (audit trail, patient profile) ---------- */
+
+/**
+ * D-27: 520 px, anchored at `top` (the main grid's top) so header, context bar, alert slot and
+ * hero remain visible AND interactive — the drawer is non-modal. A scrim over the rest of the
+ * page closes it on click; Escape and the close button close it too. Focus moves into the drawer
+ * on open and returns to the trigger on close (Radix).
+ */
+export function RightDrawer({
+  open,
+  onOpenChange,
+  top,
+  title,
+  subtitle,
+  actions,
+  children,
+  footer,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  top: number;
+  title: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  const t = useT();
+  return (
+    <RD.Root open={open} onOpenChange={onOpenChange} modal={false}>
+      <RD.Portal>
+        {open ? <div aria-hidden className="fixed inset-x-0 bottom-0 z-30 bg-scrim/25" style={{ top }} onClick={() => onOpenChange(false)} /> : null}
+        <RD.Content
+          style={{ top }}
+          onInteractOutside={(e) => e.preventDefault()}
+          className="fixed bottom-0 right-0 z-40 flex w-130 max-w-full flex-col rounded-tl-card border-l-theme border-t-theme border-card-outline bg-card shadow-card hc:border-ink"
+        >
+          <div className="flex items-start justify-between gap-4 px-8 pb-3 pt-7 compact:px-6 compact:pt-5">
+            <div className="min-w-0">
+              <RD.Title className="nowrap text-[34px] font-bold leading-[42px]">{title}</RD.Title>
+              {subtitle ? <RD.Description className="nowrap mt-1 text-base text-text-2">{subtitle}</RD.Description> : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {actions}
+              <RD.Close asChild>
+                <Button variant="icon" size="icon" aria-label={t.common.close}>
+                  <X aria-hidden size={20} strokeWidth={1.75} />
+                </Button>
+              </RD.Close>
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-6 compact:px-6">{children}</div>
+          {footer ? <div className="border-t-theme border-card-border px-8 py-4">{footer}</div> : null}
+        </RD.Content>
+      </RD.Portal>
+    </RD.Root>
+  );
+}

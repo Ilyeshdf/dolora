@@ -94,13 +94,13 @@ export function AttributionBar({
           </div>
         ))}
       </div>
-      <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-2.5">
+      <dl className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-x-5 gap-y-2 compact:mt-3 compact:gap-y-1">
         {/* An unavailable class moves to the end of the legend (A4). */}
         {/* Zero shares are omitted from the legend (A8 sheet 2 "Standard"). */}
         {[...ORDER.filter((c) => (value(c) ?? 0) > 0), ...ORDER.filter((c) => value(c) === null)].map((c) => {
           const v = value(c);
           return (
-            <div key={c} className="flex min-w-0 items-center gap-2.5">
+            <div key={c} className={cn('flex min-w-0 items-center gap-2.5', v === null && 'col-span-2 max-w-[calc(50%+170px)]')}>
               <span
                 aria-hidden
                 className={cn(
@@ -108,11 +108,11 @@ export function AttributionBar({
                   v === null ? 'border border-dashed border-muted bg-transparent' : [FILL[c], HC_FILL[c], 'hc:border hc:border-ink'],
                 )}
               />
-              <dt className="nowrap min-w-0 truncate text-md text-text-2">
+              <dt className="nowrap min-w-0 truncate text-base text-text-2 compact:text-sm">
                 {names[c]}
                 {v === null ? <span className="text-muted"> · {t.attribution.motionMasked}</span> : null}
               </dt>
-              <dd className="ml-auto pl-2 text-md font-bold">{v === null ? t.common.notAvailable : pct(v)}</dd>
+              <dd className="ml-auto pl-2 text-base font-bold compact:text-sm">{v === null ? t.common.notAvailable : pct(v)}</dd>
             </div>
           );
         })}

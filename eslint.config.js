@@ -14,6 +14,8 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // French typography uses no-break spaces inside strings ("80 %", "Référence :").
+      'no-irregular-whitespace': ['error', { skipStrings: true, skipTemplates: true }],
     },
   },
   {

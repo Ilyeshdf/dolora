@@ -12,7 +12,7 @@ const tokenNames = [
   'monitor', 'monitor-fg', 'monitor-muted', 'monitor-line',
   'trace-ppg', 'trace-eda', 'trace-temp', 'trace-motion', 'arousal',
   'attr-pain', 'attr-stress', 'attr-agitation', 'attr-rest', 'attr-unexplained',
-  'body-fill', 'body-stroke', 'card-outline', 'alert-solid-fg', 'chip-icon-fg', 'chip-timed-border', 'subtle', 'chip-icon', 'tooltip', 'tooltip-fg', 'focus', 'scrim',
+  'body-fill', 'body-stroke', 'card-outline', 'alert-solid-fg', 'chip-icon-fg', 'chip-timed-border', 'event-region', 'subtle', 'chip-icon', 'tooltip', 'tooltip-fg', 'focus', 'scrim',
 ] as const;
 
 export default {
@@ -70,6 +70,8 @@ export default {
     plugin(({ addVariant }) => {
       addVariant('hc', ":is([data-theme='hc'] &)");
       addVariant('night', ":is([data-theme='night'] &)");
+      // Compact density (1366×768 and other small viewports) — set on the screen root (D-43).
+      addVariant('compact', ':is(.compact &)');
     }),
   ],
 } satisfies Config;

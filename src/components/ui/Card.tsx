@@ -9,7 +9,7 @@ const cardVariants = cva('rounded-card border-theme shadow-card', {
       default: 'bg-card border-card-outline',
       sky: 'bg-sky border-sky hc:border-card-outline',
       butter: 'bg-butter border-butter hc:border-card-outline',
-      monitor: 'bg-monitor text-monitor-fg border-monitor hc:border-card-outline',
+      monitor: 'bg-monitor text-monitor-fg border-monitor night:border-card-border hc:border-card-outline',
     },
     padding: {
       none: '',

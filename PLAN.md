@@ -258,3 +258,33 @@ Visual comparison against A8 sheets 1–4 and A1/A2/A5/A7 led to these fixes:
 - sheet grids stack below 1500 px instead of scrolling sideways.
 
 Components that only exist inside larger screens are built in Phase 2 on top of these primitives: the header, context bar, body map and timeline chart.
+
+### Phase 2 — Monitor screens ✅
+
+| Area | Where |
+|---|---|
+| View model (mirrors §5.1 + D-7) | `src/contracts/monitor.ts` |
+| Design fixtures A1–A4 (deterministic, seeded) | `src/fixtures/monitorFixtures.ts` |
+| Store: view, audit (append-only), UI state, actions (acknowledge, save assessment, confirm mode) | `src/store/monitor.ts` |
+| Screen + layout (1920 grid, compact density D-43) | `src/features/monitor/MonitorPage.tsx`, `useCompact.ts` |
+| Header (nav, ICU/Ward + confirm popover, pills, theme/lang/help) | `src/features/header/Header.tsx` |
+| Context bar (chips + tooltips, legend, baseline button) | `src/features/context-bar/ContextBar.tsx` |
+| Alert slot binding + assertive live region | `src/features/monitor/AlertSlotView.tsx` |
+| Body map (traced silhouette, hotspots, labels, callouts + leaders, tool rail, legend, floor grid) | `src/features/body-map/` |
+| Timeline (recharts: band, pain, arousal, regions, alerts, references, ghosts, bracket, tooltip) | `src/features/timeline/TimelineCard.tsx` |
+| Attribution / drivers / live signals | `src/features/cards/RightCards.tsx` |
+| CPOT/BPS dialog (RHF + zod, BPS tab, NMB note) | `src/features/cpot/`, `src/clinical/scales.ts`, `src/contracts/assessment.ts` |
+| Audit drawer (non-modal, filters, JSON export) | `src/features/audit/AuditDrawer.tsx`, `RightDrawer` in `components/ui/Overlay.tsx` |
+
+States: A1 pain + alert · A2 Night stress (≠) · A3 abstention · A4 degraded/NMB · A5 dialog · A6 audit drawer · A7 high contrast. All are compared with the artboards at 1920×1080 and checked at 1366×768, in EN/FR and all three themes, by the layout guards (D-50).
+
+§19.1 defects fixed:
+- single-line labels (enforced by the guard);
+- the sensor legend title on its own row;
+- the driver title/sub-line overlap (D-38);
+- "No drivers to show" laid out as a stack;
+- the "Live signals" and "Last 10 minutes" titles;
+- the CPOT before-window label moved off the threshold line;
+- the footer fully visible, with the full disclaimer.
+
+Phase 3 adds the add-context popover, chip removal, baseline confirmation, profile drawer and command palette, which are currently styled but inert (D-49).

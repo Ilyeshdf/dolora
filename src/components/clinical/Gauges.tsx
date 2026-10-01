@@ -48,8 +48,8 @@ export function ArcGauge({ kind, value, hi, label, paused }: ArcGaugeProps) {
   const levelText = level === 'HIGH' ? t.arousal.high : level === 'MODERATE' ? t.arousal.moderate : t.arousal.low;
 
   return (
-    <figure className="flex w-[170px] flex-col items-center">
-      <div className="relative h-[100px] w-[148px]">
+    <figure className="flex w-[170px] flex-col items-center compact:w-[130px]">
+      <div className="relative h-[100px] w-[148px] compact:h-[66px] compact:w-[98px]">
         <svg viewBox="0 0 148 100" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
           <path d={arc(0, 1)} fill="none" stroke="rgb(var(--card))" strokeWidth={W} strokeLinecap="round" className="hc:[stroke:rgb(var(--band))]" />
           {showValue && kind === 'pain' && hiFrac > frac ? (
@@ -70,11 +70,11 @@ export function ArcGauge({ kind, value, hi, label, paused }: ArcGaugeProps) {
             <line x1={CX} y1={CY - R - 14} x2={CX} y2={CY - R - 4} stroke="rgb(var(--ink))" strokeOpacity=".7" strokeWidth="1.5" />
           ) : null}
         </svg>
-        <div className="absolute inset-x-0 top-[46px] flex items-baseline justify-center font-bold">
+        <div className="absolute inset-x-0 top-[46px] flex items-baseline justify-center font-bold compact:top-[26px]">
           {showValue ? (
             <>
               {kind === 'arousal' && <span className="mr-0.5 text-lg font-semibold text-text-2">z</span>}
-              <span className="text-gauge">{f.num(value)}</span>
+              <span className="text-gauge compact:text-[26px] compact:leading-7">{f.num(value)}</span>
               {kind === 'pain' && <span className="ml-0.5 text-base font-normal text-text-2">/10</span>}
             </>
           ) : (
@@ -82,8 +82,8 @@ export function ArcGauge({ kind, value, hi, label, paused }: ArcGaugeProps) {
           )}
         </div>
       </div>
-      <figcaption className="nowrap mt-1 text-base font-medium">{label}</figcaption>
-      <div className="mt-2 h-8">
+      <figcaption className="nowrap mt-1 text-base font-medium compact:mt-0.5 compact:text-sm">{label}</figcaption>
+      <div className={cn('mt-2 h-8 compact:mt-1 compact:h-7 compact:[&>span]:h-7 compact:[&>span]:text-xs', !showValue && 'hidden')}>
         {showValue && kind === 'arousal' ? (
           <span className="nowrap inline-flex h-8 items-center gap-1 rounded-full bg-card px-3 text-sm font-semibold hc:border-2 hc:border-ink">
             {level === 'HIGH' ? <ArrowUp aria-hidden size={14} strokeWidth={2.25} /> : null}
@@ -115,9 +115,9 @@ export function ArousalPainCard({
   const t = useT();
   const inactive = state !== 'live';
   return (
-    <Card tone="sky" padding="none" className={cn('flex flex-col px-8 pb-6 pt-7', className)}>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="nowrap text-xl font-semibold">{t.arousal.title}</h2>
+    <Card tone="sky" padding="none" className={cn('flex flex-col px-8 pb-5 pt-6 compact:px-5 compact:pb-2 compact:pt-3', className)}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 compact:flex-col compact:items-start compact:gap-1">
+        <h2 className="nowrap text-xl font-semibold compact:text-lg">{t.arousal.title}</h2>
         {state === 'paused' ? (
           <span className="nowrap inline-flex h-8 items-center gap-1.5 rounded-full bg-card px-3 text-sm font-medium hc:border-2 hc:border-ink">
             <Pause aria-hidden size={14} strokeWidth={1.75} />
@@ -131,7 +131,7 @@ export function ArousalPainCard({
           </span>
         ) : null}
       </div>
-      <div className="mt-5 flex items-start justify-between">
+      <div className="mt-5 flex items-start justify-between compact:mt-0">
         <ArcGauge kind="arousal" value={inactive ? null : z} label={t.arousal.autonomic} paused={inactive} />
         {notEqual && !inactive ? (
           <span className="mt-10 text-4xl font-bold text-text-2" aria-label={t.arousal.notEqual}>
@@ -140,7 +140,7 @@ export function ArousalPainCard({
         ) : null}
         <ArcGauge kind="pain" value={inactive ? null : pain} hi={hi} label={t.arousal.pain} paused={inactive} />
       </div>
-      <p className="mt-auto pt-3 text-sm leading-[22px] text-text-2">{t.arousal.caption}</p>
+      <p className="mt-auto pt-2 text-sm leading-5 text-text-2 compact:hidden">{t.arousal.caption}</p>
     </Card>
   );
 }

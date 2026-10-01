@@ -13,6 +13,8 @@
   --alert-solid-fg: 198 40 40; /* text of the white 'Assess' button on the red banner */
   --chip-icon-fg: 17 20 24;
   --chip-timed-border: 236 220 130;
+  --event-region: 251 239 166; /* butter */
+  --event-stroke: none;
   --page-from: 248 244 230; /* #F8F4E6 */
   --page-to: 233 240 248; /* #E9F0F8 */
   --card: 255 255 255;
@@ -76,6 +78,8 @@
   --alert-solid-fg: 211 47 47;
   --chip-icon-fg: 230 237 243;
   --chip-timed-border: 92 84 52;
+  --event-region: 58 53 34;
+  --event-stroke: none;
   --page-from: 13 17 23; /* #0D1117 */
   --page-to: 13 17 23;
   --card: 22 27 34; /* #161B22 */
@@ -139,6 +143,8 @@
   --alert-solid-fg: 255 255 255; /* black pill, white text on the yellow HC banner */
   --chip-icon-fg: 0 0 0;
   --chip-timed-border: 255 255 255;
+  --event-region: 51 51 51; /* A7: dark grey band, outlined */
+  --event-stroke: rgb(255 255 255);
   --page-from: 0 0 0;
   --page-to: 0 0 0;
   --card: 0 0 0;

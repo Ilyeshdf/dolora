@@ -14,6 +14,8 @@ interface ContextChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fraction?: number;
   /** Visual state used by the component sheet for the hover example. */
   forceHover?: boolean;
+  /** Hide the "Persistent" suffix when the bar is crowded (A4); the tooltip still says it (D-37). */
+  hideSuffix?: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ interface ContextChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * Timed: butter fill, countdown ring. Height 40, icon disc 32.
  */
 export const ContextChip = forwardRef<HTMLButtonElement, ContextChipProps>(
-  ({ label, route, kind, remaining, fraction = 1, forceHover, className, ...props }, ref) => {
+  ({ label, route, kind, remaining, fraction = 1, forceHover, hideSuffix, className, ...props }, ref) => {
     const t = useT();
     const timed = kind === 'timed';
     return (
@@ -47,7 +49,7 @@ export const ContextChip = forwardRef<HTMLButtonElement, ContextChipProps>(
           <RouteIcon route={route} size={17} />
         </span>
         <span>{timed && remaining ? `${label} · ${t.chips.left(remaining)}` : label}</span>
-        {kind === 'persistent' && <span className="font-normal text-muted">{t.chips.persistent}</span>}
+        {kind === 'persistent' && !hideSuffix && <span className="font-normal text-muted">{t.chips.persistent}</span>}
         {timed && <CountdownRing fraction={fraction} />}
       </button>
     );

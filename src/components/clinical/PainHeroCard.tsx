@@ -34,13 +34,18 @@ export interface HeroAbstainProps {
   onPerform?: () => void;
 }
 
-export type PainHeroCardProps = (HeroOkProps | HeroAbstainProps) & { className?: string; compact?: boolean };
+export type PainHeroCardProps = (HeroOkProps | HeroAbstainProps) & {
+  className?: string;
+  compact?: boolean;
+  /** Latest clinician reference, e.g. "Last CPOT 4 · 3 min ago" (D-9). */
+  lastReference?: string | null;
+};
 
 /** Pain hero card — A8 sheet 1 §01 (ok mild/moderate/severe, degraded, rejected, FR). */
 export function PainHeroCard(props: PainHeroCardProps) {
   const t = useT();
   return (
-    <Card padding="none" className={cn('flex flex-col px-8 pb-7 pt-8', props.className)}>
+    <Card padding="none" className={cn('flex flex-col px-8 pb-5 pt-8 hc:pb-3 hc:pt-6 compact:px-5 compact:pb-3 compact:pt-4', props.className)}>
       {props.state === 'ok' ? <HeroOk {...props} /> : <HeroAbstain {...props} />}
       <span className="sr-only">{t.hero.estimatedPain}</span>
     </Card>
@@ -50,14 +55,14 @@ export function PainHeroCard(props: PainHeroCardProps) {
 function HeroHeader({ right }: { right: ReactNode }) {
   const t = useT();
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-wrap items-start justify-between gap-x-4 compact:gap-y-0">
       <h2 className="nowrap pt-2 text-xl font-semibold">{t.hero.estimatedPain}</h2>
       {right}
     </div>
   );
 }
 
-function HeroOk(p: HeroOkProps & { compact?: boolean }) {
+function HeroOk(p: HeroOkProps & { compact?: boolean; lastReference?: string | null }) {
   const t = useT();
   const f = useFormat();
   const sev = severityOf(p.score);
@@ -66,29 +71,29 @@ function HeroOk(p: HeroOkProps & { compact?: boolean }) {
   return (
     <>
       <HeroHeader right={<SeverityPill severity={sev} />} />
-      <p className={cn('mt-1 flex items-baseline font-bold tracking-[-0.03em]', p.compact ? 'text-hero-sm' : 'text-hero')}>
+      <p className={cn('mt-1 flex items-baseline font-bold tracking-[-0.03em]', p.compact ? 'text-[80px] leading-[72px]' : 'text-hero')}>
         <span className="transition-opacity duration-150">{f.num(p.score)}</span>
-        <span className="ml-1 text-hero-unit font-normal tracking-normal text-text-2">{t.hero.outOf10}</span>
+        <span className="ml-1 text-hero-unit font-normal tracking-normal text-text-2 compact:text-2xl">{t.hero.outOf10}</span>
       </p>
 
-      <ScaleBar className="mt-5" score={p.score} lo={p.lo} hi={p.hi} />
+      <ScaleBar className="mt-6 compact:mt-3" score={p.score} lo={p.lo} hi={p.hi} />
 
       {p.notAttributed ? (
-        <Badge tone="neutral" size="lg" className="mt-4 self-start" icon={<Info aria-hidden size={18} strokeWidth={1.75} />}>
+        <Badge tone="neutral" size="md" className="mt-3 self-start compact:mt-2 compact:h-auto compact:whitespace-normal compact:py-1 compact:text-sm" icon={<Info aria-hidden size={18} strokeWidth={1.75} className="shrink-0" />}>
           {t.hero.notAttributed}
         </Badge>
       ) : null}
 
-      <div className="mt-4 flex items-center gap-3 text-md">
+      <div className="mt-3.5 flex items-center gap-3 text-md compact:mt-2 compact:text-base">
         <span aria-hidden className="h-2.5 w-6 rounded-full bg-band" />
-        <span className="nowrap text-text-2">{t.scale.interval80}</span>
-        {p.degraded ? <span className="nowrap text-sm text-muted">· {t.scale.wider}</span> : null}
-        <span className="nowrap ml-auto font-bold">
+        <span className="nowrap shrink-0 text-text-2">{t.scale.interval80}</span>
+        {p.degraded ? <span className="nowrap min-w-0 truncate text-sm text-muted compact:hidden">· {t.scale.wider}</span> : null}
+        <span className="nowrap ml-auto shrink-0 font-bold">
           {f.num(p.lo)} – {f.num(p.hi)}
         </span>
       </div>
 
-      {p.degraded || p.coverageNotValidated ? (
+      {p.degraded ? (
         <div className="mt-4 flex flex-col items-start gap-2 border-t border-card-border pt-4 hc:border-ink">
           {p.degraded ? (
             <Badge tone="advisory" icon={<HalfRingIcon className="h-3.5 w-3.5" />}>
@@ -103,8 +108,14 @@ function HeroOk(p: HeroOkProps & { compact?: boolean }) {
         </div>
       ) : null}
 
+      {!p.degraded && p.coverageNotValidated ? (
+        <Badge tone="advisory" size="sm" className="mt-3 self-start compact:mt-2" icon={<Info aria-hidden size={14} strokeWidth={1.75} />}>
+          {t.hero.coverageNotValidated}
+        </Badge>
+      ) : null}
+
       {!p.degraded ? (
-        <div className="mt-auto border-t border-card-border pt-4 hc:border-ink">
+        <div className="mt-auto border-t border-card-border pt-3 hc:border-ink compact:pt-2">
           <div className="flex items-center gap-3">
             <span className="nowrap flex items-center gap-1 text-lg font-bold">
               <TrendIcon aria-hidden size={18} strokeWidth={2.25} />
@@ -115,7 +126,7 @@ function HeroOk(p: HeroOkProps & { compact?: boolean }) {
               {p.signalsLabel ?? t.hero.signalsOk}
             </StatusPill>
           </div>
-          <p className="nowrap mt-2 text-sm text-text-2">
+          <p className="nowrap mt-1.5 text-sm text-text-2">
             {p.episode ? (
               <>
                 {t.hero.episodeSince} <span className="font-bold text-ink">{p.episode.since}</span> · {p.episode.elapsed}
@@ -130,7 +141,7 @@ function HeroOk(p: HeroOkProps & { compact?: boolean }) {
   );
 }
 
-function HeroAbstain(p: HeroAbstainProps) {
+function HeroAbstain(p: HeroAbstainProps & { lastReference?: string | null }) {
   const t = useT();
   const f = useFormat();
   return (
@@ -138,17 +149,17 @@ function HeroAbstain(p: HeroAbstainProps) {
       <HeroHeader
         right={
           p.lastValid ? (
-            <span className="nowrap pt-2.5 text-sm text-muted">{t.hero.lastValid(f.num(p.lastValid.score), p.lastValid.age)}</span>
+            <span className="nowrap pt-2.5 text-sm text-muted compact:pt-0">{t.hero.lastValid(f.num(p.lastValid.score), p.lastValid.age)}</span>
           ) : null
         }
       />
-      <span className="mt-4 grid h-22 w-22 place-items-center rounded-full bg-track hc:border-2 hc:border-ink">
-        <NoSignalIcon className="h-10 w-10 text-text-2" />
+      <span className="mt-3 grid h-14 w-14 shrink-0 place-items-center rounded-full bg-track hc:border-2 hc:border-ink compact:hidden">
+        <NoSignalIcon className="h-8 w-8 text-text-2" />
       </span>
-      <h3 className="mt-7 text-3xl font-bold leading-[38px]">{t.hero.unavailableTitle}</h3>
+      <h3 className="mt-4 text-3xl font-bold leading-[36px] compact:mt-4 compact:text-2xl">{t.hero.unavailableTitle}</h3>
       <ul className="mt-4 flex flex-col gap-2">
         {p.reasons.map((r) => (
-          <li key={r.text} className="flex items-start gap-2.5 text-md leading-6 text-text-2">
+          <li key={r.text} className="flex items-start gap-2.5 text-base leading-[22px] text-text-2">
             {r.kind === 'rejected' ? (
               <RejectedIcon className="mt-[3px] h-[18px] w-[18px] shrink-0 text-sensor-rejected" />
             ) : (
@@ -158,11 +169,12 @@ function HeroAbstain(p: HeroAbstainProps) {
           </li>
         ))}
       </ul>
-      <Button size="lg" className="mt-7 self-start" onClick={p.onPerform}>
+      {p.lastReference ? <p className="nowrap mt-2.5 text-sm font-medium text-ink">{p.lastReference}</p> : null}
+      <Button size="lg" className="mt-5 shrink-0 self-start compact:mt-3 compact:h-11" onClick={p.onPerform}>
         <ClipboardList aria-hidden size={20} strokeWidth={1.75} />
         {t.alertSlot.perform}
       </Button>
-      <p className="mt-5 text-sm text-muted">{t.hero.staleNote}</p>
+      <p className="mt-2.5 text-sm text-muted compact:mt-2">{t.hero.staleNote}</p>
     </>
   );
 }

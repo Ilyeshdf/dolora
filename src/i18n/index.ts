@@ -37,6 +37,12 @@ export function formatSigned(value: number, lang: Lang, digits = 2): string {
   return value < 0 ? `−${abs}` : `+${abs}`;
 }
 
+/** Picks the current-language text from engine-supplied bilingual text (spec §5.1 text_en / text_fr). */
+export function useL10n(): (x: { en: string; fr: string }) => string {
+  const lang = useLang();
+  return (x) => x[lang];
+}
+
 export function useFormat() {
   const lang = useLang();
   return {

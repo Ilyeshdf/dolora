@@ -31,7 +31,7 @@ export function SeverityPill({ severity, size = 'lg', className }: { severity: S
     <span
       className={cn(
         'nowrap inline-flex items-center gap-2 rounded-full font-bold text-severity-fg',
-        size === 'lg' ? 'h-10 px-4 text-[22px]' : 'h-8 px-3 text-base',
+        size === 'lg' ? 'h-10 px-4 text-[22px] compact:h-8 compact:px-3 compact:text-base' : 'h-8 px-3 text-base',
         severityBg[severity],
         'hc:border-2 hc:border-ink hc:bg-card hc:text-ink',
         className,

@@ -27,7 +27,8 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 **D‑2 CPOT 4 vs 5 (A5 vs A3).** A5 is authoritative: CPOT 4 at 14:33:40. The A3 fixture uses "CPOT 4 · 14:33:40". The dialog's header time and the timeline marker come from the same `reference.t`, so they can't diverge.
 
 **D‑3 Baseline timing.**
-- Fixture order: "CPOT recorded 13:58:10 (total 0 / 8)", then "Baseline marked 13:58:30 (quality: good)".
+- Fixture order: "CPOT recorded 13:58:10 (total 1 / 8)", then "Baseline marked 13:58:30 (quality: good)".
+- *(Phase 2)* The total stays 1, as in A1 and A6. That still qualifies for a good baseline under D‑13 (CPOT ≤ 2).
 - In the app, marking a baseline requires a recent assessment that qualifies (see D‑13), so the order is enforced by the UI.
 
 **D‑4 Arousal levels (owner).**
@@ -39,7 +40,7 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 - **Top drivers** explain the **pain score** (Head A SHAP contributions). Title: "What moves the pain score", subtitle "vs this patient's baseline".
 - **Attribution card** explains **why the arousal is attributed** to pain / stress / agitation / rest / unexplained (Head B). Title: "Why is the body aroused?" (FR: « Pourquoi cette activation ? »).
 - Each card has an info tooltip with one sentence stating which question it answers.
-- In the stress state (A2), drivers show small contributions plus a muted note: "Arousal is high but contributes little to the pain score".
+- In the stress state (A2), drivers show small contributions plus a muted note: "Arousal is high but contributes little to the pain score". *(Phase 2)* A2 leaves no free space in the drivers card, so the note is appended to the card's info tooltip and screen-reader label whenever arousal is "not attributed to pain".
 
 **D‑6 Red (owner).**
 - Saturated red (`--alert`) = alert semantics only: the alert banner, timeline alert triangles, and the alert badge on Unit overview bed cards.
@@ -64,7 +65,7 @@ How each item in spec §19 is resolved, plus other conflicts found while plannin
 
 **D‑8 "Assessment unavailable" header pill.** Formally part of the header spec. It's a slate StatusPill, shown when `status = REJECTED` (including CONTEXT_UNASSESSABLE), placed between the mode control and the connection pill. It's not red.
 
-**D‑9 Abstention card shows the latest manual assessment.** Below the reasons it shows "Last CPOT 4 · 3 min ago" (or BPS/NRS), with the same freshness rules. This fixes 19.2‑9 and also covers §20.1. The hero in normal states shows the same line.
+**D‑9 Abstention card shows the latest manual assessment.** Below the reasons it shows "Last CPOT 4 · 3 min ago" (or BPS/NRS), with the same freshness rules. This fixes 19.2‑9 and also covers §20.1. *(Phase 2 revision)* The normal hero has no room for this line at 1920×1080 once the D‑1 badge is added. There, the last reference is shown on the timeline instead (an in-window diamond, or the "‹ CPOT 1 · 13:58 (35 min ago, before window)" edge marker).
 
 **D‑10 Calibration duration (owner).** 90 s by default, configurable in Settings (60–180 s). In demo mode the time scale compresses it.
 
@@ -114,7 +115,7 @@ The user can always switch scales.
 **D‑17 Alerts while locked or with a dialog open.**
 - Monitoring continues while the session is locked.
 - A new alert shows on the lock overlay as a minimal strip ("Bed 4 · Possible unmanaged pain · Unlock to view"), with no clinical detail beyond that.
-- An alert during the CPOT dialog goes into the alert slot, which stays visible above the scrim (the dialog is placed below it). Focus isn't stolen.
+- ~~An alert during the CPOT dialog goes into the alert slot, which stays visible above the scrim.~~ Superseded by **D‑42**: the dialog sits over everything, as in A5.
 - Multiple alerts on one bed collapse into the highest-priority one. On Unit overview each bed shows its own badge.
 
 **D‑18 Acknowledge then REJECTED.** Acknowledgement stays on the record. The acknowledged strip is replaced by the abstention advisory (ICU). The re-escalation timer pauses while REJECTED and resumes from zero once the status recovers.
@@ -209,7 +210,10 @@ The user can always switch scales.
 - Placed bottom-centre above the footer.
 - Lasts 10 s when it carries an Undo action (task §3.2‑B), otherwise 5 s. Radix Toast supplies the live region.
 
-**D‑37 Persistent chips always show "Persistent".** A4's drug chips omit the suffix, while A1's ventilation chip shows it. The spec (§6.3) says persistent chips are marked, so every persistent chip carries it. Timed chips show "· m:ss left" and a countdown ring instead.
+**D‑37 Persistent chips show "Persistent" when there's room.** A4's drug chips omit the suffix, while A1's ventilation chip shows it.
+- *(Phase 2 revision)* The suffix shows when there are at most two chips. With three or more (A4) it's dropped so "+ Add context" doesn't collide with the route legend.
+- Every chip tooltip states "Persistent" or the time left, so the information is never lost.
+- Timed chips always show "· m:ss left" and a countdown ring.
 
 **D‑38 Driver row layout (fixes the A1/A4 wrap defect).**
 - The title gets the full row and is truncated to one line, with the full text in `title` and the hover tooltip.
@@ -233,3 +237,48 @@ The user can always switch scales.
 - `npm run screenshots` uses `playwright-core` with the locally installed Edge/Chrome, so no browser download is needed. It captures every sheet at 1920×1080 and 1366×768 in all three themes and fails on any console error or warning.
 - `scripts/overlay-check.mjs` smoke-tests the drawer, dialog, popover, toast, tooltip, stepper and select by keyboard and pointer.
 - Screenshots are git-ignored; regenerate them locally.
+
+## Phase 2 implementation decisions
+
+**D‑42 CPOT/BPS dialog vs alert slot.** Follows A5: the dialog is modal, with a 40 % scrim over the whole screen, including the alert slot. The owner didn't answer the D‑17 question, so the design wins. A new alert while the dialog is open is still announced through the assertive live region, and the banner stays visible (dimmed) under the scrim. Replaces the D‑17 bullet.
+
+**D‑43 Compact density (≤ 1599 px wide or ≤ 899 px high, e.g. 1366×768).** The 1920×1080 layout scaled down would push text below 13 px (§10.2), so compact mode changes what is shown instead:
+
+| Area | Compact behaviour |
+|---|---|
+| Columns | 350 / fluid / 370 px, 16 px gaps and gutters |
+| Header | Patient pill shows ID + bed only; ICU/Ward rule text and Baseline pill hidden (the rule is in the alert banner, the baseline state in the audit) |
+| Context bar | Label and route legend hidden (chips carry their route icon) |
+| Body map | Figure scaled by the column width **and** the height left above the timeline, so every hotspot stays visible. Labels, callouts, leaders, legend and floor grid hidden; the drivers card carries the same information and the hotspots keep their tooltips |
+| Hero | 80 px numeral; the abstention icon is hidden |
+| Arousal card | Smaller gauges (text stays ≥ 13 px); caption hidden |
+| Drivers card | Subtitle hidden; rows scroll inside the card |
+| Live signals | 2×2 grid of values + state (no traces) |
+| Timeline | Short legend labels; legend may wrap to two lines |
+| Columns | The side columns may scroll vertically if content still exceeds the height. The page itself never scrolls |
+
+**D‑44 Fixture reconciliations (A1–A6 demo values).**
+- *Clock:* fixtures use a fixed day and UTC formatting so screenshots are deterministic. Phase 4 switches to the live clock and device-local time (D‑24).
+- *A1 suctioning:* the chip reads "1:24 left" and the timeline region starts 14:30:05 (the A6 audit time), as in the designs. With a 2-minute flag these two are inconsistent. Phase 4 derives both from one start time and duration.
+- *A6 trail:* A6 shows "Alert acknowledged 14:32:52" while A1's banner is still red. The fixture trail omits that entry; pressing Acknowledge appends it.
+- *A2 Night:* "Family visit · 14 min left" means a 20-minute flag started six minutes earlier, so the region starts at 20:34:20.
+- *A4 tool rail:* starts with the Drivers layer off, as drawn.
+
+**D‑45 Compare-modes ghosts (A10 preview).** The toggle works now. Until the alert engine exists (Phase 4), the other mode's alert is approximated as 70 s later (Ward) or earlier (ICU) than the actual alert. The approximation lives in one function (`ghostsFor`), and Phase 4 replaces it with the real rule evaluated on the history.
+
+**D‑46 Audit filters.** "Baseline marked" is filed under **Assessments**: it is a clinician reference action that follows a CPOT/BPS. Export is JSON via Blob, newest first, with English action labels and ISO times.
+
+**D‑47 French typography.**
+- FR strings use a no-break space before ":", ";", "?" and "!", and a narrow no-break space before "%". So "80 %" and "Référence : adaptative" never break badly.
+- ESLint's `no-irregular-whitespace` skips strings and templates for this reason. It still applies to code.
+
+**D‑48 Header under width pressure.** At 1920 the header fits in EN. In FR, or with the "Assessment unavailable" pill, the patient pill's secondary part ("ICU · Post-op day 1") truncates with an ellipsis, and the full text is in its `title`. The patient ID and bed are never truncated.
+
+**D‑49 Monitor state URLs (Phase 2 only).** `/bed/4/monitor?state=pain|stress|abstain|degraded`, plus `&dialog=assessment` (`&prefill=a5` reproduces the A5 selections), `&panel=audit` and `&hover=<driver id>` (shows the hover tooltip and halo as in A1). These select design fixtures. In Phase 4 the same screen renders live or simulated data.
+
+**D‑50 Layout guards.** `npm run screenshots` fails on:
+- page scroll or a clipped footer;
+- content overflowing any card;
+- any `.nowrap` label that renders on more than one line.
+
+It checks every state at 1920×1080 and 1366×768, in EN and FR and in all three themes.

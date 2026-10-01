@@ -62,7 +62,7 @@ export function Segmented<T extends string>({
 
   const item = {
     sm: 'h-8 px-3.5 text-sm',
-    md: 'h-[34px] px-4 text-base',
+    md: 'h-[34px] px-3.5 text-base',
     lg: 'h-11 px-5 text-md',
   }[size];
   const pad = size === 'lg' ? 'p-1' : 'p-[5px]';

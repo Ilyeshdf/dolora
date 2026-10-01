@@ -46,10 +46,10 @@ export function BaselinePill({ state, provisional }: { state: BaselineState; pro
   const t = useT();
   const value = { calibrating: t.baseline.calibrating, adaptive: t.baseline.adaptive, frozen: t.baseline.frozen, recalibration: t.baseline.recalibration }[state];
   return (
-    <span className="nowrap inline-flex h-10 items-center gap-2 rounded-full border-theme border-card-border bg-card px-4 text-base text-text-2 hc:border-ink hc:text-ink">
+    <span className="nowrap inline-flex h-10 items-center gap-2 rounded-full border-theme border-card-border bg-card px-3.5 text-base text-text-2 hc:border-ink hc:text-ink">
       <Anchor aria-hidden size={17} strokeWidth={1.75} className="text-ink" />
       <span>
-        {t.baseline.label}:{' '}
+        {t.baseline.pill}{' '}
         <span className={cn('font-semibold text-ink', state === 'recalibration' && 'text-advisory-text hc:text-advisory-border')}>{value}</span>
         {provisional ? <span className="font-semibold text-advisory-text hc:text-advisory-border"> · {t.baseline.provisional}</span> : null}
       </span>
@@ -75,7 +75,7 @@ export function ModeControl({ mode, onRequest, showRule = true }: { mode: Mode; 
         ]}
       />
       {showRule ? (
-        <p className="w-[190px] text-[13px] leading-4 text-text-2">{mode === 'ICU' ? t.mode.icuRule : t.mode.wardRule}</p>
+        <p className="w-[150px] text-[13px] leading-4 text-text-2">{mode === 'ICU' ? t.mode.icuRule : t.mode.wardRule}</p>
       ) : null}
     </div>
   );

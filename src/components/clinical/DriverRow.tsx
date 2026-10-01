@@ -36,7 +36,7 @@ export const DriverRow = forwardRef<HTMLDivElement, DriverRowProps>(
         ref={ref}
         tabIndex={0}
         className={cn(
-          'flex gap-2.5 rounded-[16px] border border-transparent px-3 py-3 outline-none transition-colors duration-150',
+          'flex gap-2.5 rounded-[16px] border border-transparent px-3 py-2 outline-none transition-colors duration-150',
           'hover:border-sky hover:bg-subtle focus-visible:border-sky focus-visible:bg-subtle',
           highlighted && 'border-[#D5E3F5] bg-subtle night:border-card-border',
           highlighted && 'hc:border-2 hc:border-action hc:bg-card',
@@ -61,7 +61,7 @@ export const DriverRow = forwardRef<HTMLDivElement, DriverRowProps>(
               <TriangleAlert aria-hidden size={16} strokeWidth={1.75} className="shrink-0 text-sensor-degraded" />
             ) : null}
           </div>
-          <div className="mt-1 flex items-center gap-3">
+          <div className="mt-0.5 flex items-center gap-3">
             <p className="nowrap min-w-0 flex-1 truncate text-sm text-muted" title={subline}>
               {degradedReliability !== undefined ? `${subline} · ${t.drivers.degradedSource(f.num(degradedReliability, 2))}` : subline}
             </p>

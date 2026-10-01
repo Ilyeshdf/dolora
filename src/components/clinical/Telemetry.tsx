@@ -35,9 +35,9 @@ export function TelemetryRow({
   const stateLabel = { ok: t.sensors.ok, degraded: t.sensors.degraded, rejected: t.sensors.rejected, masked: t.sensors.masked }[state];
   return (
     <div className="flex items-center gap-3">
-      <div className="w-[100px] shrink-0">
-        <p className="nowrap text-xs leading-4 text-monitor-muted">{label}</p>
-        <p className="nowrap text-md font-bold leading-6 text-monitor-fg">{value}</p>
+      <div className="w-[118px] shrink-0">
+        <p className="nowrap text-xs leading-[14px] text-monitor-muted">{label}</p>
+        <p className="nowrap text-md font-bold leading-[22px] text-monitor-fg">{value}</p>
       </div>
       <div className="relative h-[30px] min-w-0 flex-1">
         {state !== 'masked' ? (

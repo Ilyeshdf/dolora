@@ -24,7 +24,7 @@ export function StatusPill({
     <span
       className={cn(
         'nowrap inline-flex items-center gap-2 rounded-full font-semibold',
-        size === 'md' ? 'h-10 px-4 text-base' : 'h-8 px-3 text-sm',
+        size === 'md' ? 'h-10 px-3.5 text-base' : 'h-8 px-3 text-sm',
         tone === 'card' && 'border-theme border-card-border bg-card text-ink hc:border-ink',
         tone === 'slate' && 'bg-sensor-rejected text-white hc:border-2 hc:border-ink hc:bg-card hc:text-ink',
         className,
