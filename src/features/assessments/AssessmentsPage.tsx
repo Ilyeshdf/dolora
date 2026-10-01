@@ -2,6 +2,7 @@ import { useState, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
 import { fmtTime } from "@/lib/time";
 import { useMonitor } from "@/store/monitor";
+import { useView } from "@/features/monitor/useView";
 import { useProfile } from "@/store/profile";
 import { Footer } from "@/components/ui/Brand";
 import { Card, CardTitle } from "@/components/ui/Card";
@@ -90,7 +91,7 @@ function scoreTone(value: number, max: number) {
 
 export function AssessmentsPage() {
   const compact = useCompact();
-  const view = useMonitor((s) => s.view);
+  const view = useView();
   const setDialog = useMonitor((s) => s.setDialog);
   const profile = useProfile((s) => s.profile);
   const [filterScale, setFilterScale] = useState<Scale>("All");

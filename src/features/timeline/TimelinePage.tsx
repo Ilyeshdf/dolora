@@ -2,7 +2,7 @@ import { useState, useLayoutEffect, useRef } from "react";
 import { useL10n } from "@/i18n";
 import { cn } from "@/lib/cn";
 import { fmtTime } from "@/lib/time";
-import { useMonitor } from "@/store/monitor";
+import { useView } from "@/features/monitor/useView";
 import { Footer } from "@/components/ui/Brand";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Header } from "@/features/header/Header";
@@ -28,7 +28,7 @@ type TimeRange = "1h" | "4h" | "12h" | "24h";
 export function TimelinePage() {
   const l = useL10n();
   const compact = useCompact();
-  const view = useMonitor((s) => s.view);
+  const view = useView();
   const [range, setRange] = useState<TimeRange>("1h");
 
   const mainRef = useRef<HTMLDivElement>(null);
@@ -41,7 +41,8 @@ export function TimelinePage() {
     return () => window.removeEventListener("resize", measure);
   }, [compact]);
 
-  const { timeline, drivers } = view;
+  const timeline = view.timeline;
+  const drivers = view.drivers ?? [];
   const rangeMs = {
     "1h": 3600_000,
     "4h": 4 * 3600_000,

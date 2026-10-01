@@ -3,6 +3,7 @@ import { useL10n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { fmtTime } from '@/lib/time';
 import { useClinical } from '@/store/clinical';
+import { useMonitor } from '@/store/monitor';
 import { useView } from '@/features/monitor/useView';
 import type { AuditEntry, AuditKind } from '@/store/auditTypes';
 import { Footer } from '@/components/ui/Brand';
@@ -30,12 +31,12 @@ type AuditFilter = 'all' | 'alert' | 'context' | 'assessment' | 'mode' | 'system
 const FILTERS: AuditFilter[] = ['all', 'alert', 'context', 'assessment', 'mode', 'system'];
 const FILTER_OF: Record<AuditKind, AuditFilter> = {
   alert: 'alert', context: 'context', assessment: 'assessment',
-  baseline: 'assessment', mode: 'mode', system: 'system',
+  baseline: 'assessment', mode: 'mode', system: 'system', profile: 'context',
 };
 
 function iconFor(e: AuditEntry) {
   if (e.kind === 'alert') return e.actor === 'system' ? Bell : CircleCheck;
-  if (e.kind === 'context') return Scale;
+  if (e.kind === 'context' || e.kind === 'profile') return Scale;
   if (e.kind === 'mode') return ArrowLeftRight;
   if (e.kind === 'assessment') return ClipboardList;
   if (e.kind === 'baseline') return Anchor;
@@ -44,7 +45,7 @@ function iconFor(e: AuditEntry) {
 
 function kindToken(kind: AuditKind) {
   if (kind === 'alert') return 'alert';
-  if (kind === 'context') return 'accent';
+  if (kind === 'context' || kind === 'profile') return 'accent';
   if (kind === 'assessment' || kind === 'baseline') return 'pain-mild';
   if (kind === 'mode') return 'pain-moderate';
   return 'muted';
@@ -53,7 +54,8 @@ function kindToken(kind: AuditKind) {
 export function AuditTrailPage() {
   const l = useL10n();
   const compact = useCompact();
-  const audit = useClinical((s) => s.audit);
+  const bedId = useMonitor((s) => s.bedId);
+  const audit = useClinical((s) => s.beds[bedId]?.audit ?? s.bed(bedId).audit);
   const view = useView();
   const patient = view.patient;
   const [filter, setFilter] = useState<AuditFilter>('all');
