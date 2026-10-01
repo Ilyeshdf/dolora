@@ -66,7 +66,7 @@ export function MonitorPage() {
   }, [compact]);
 
   return (
-    <div className={cn('themed-page flex h-dvh min-h-0 flex-col overflow-hidden', compact && 'compact')}>
+    <div className={cn('themed-page flex min-h-dvh flex-col overflow-y-auto', compact && 'compact')}>
       <Header />
       <ContextBar />
       <div className="mt-2">

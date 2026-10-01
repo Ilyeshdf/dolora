@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useParams } from 'react-router-dom';
+import { NavLink, useLocation, useParams } from 'react-router-dom';
 import { Contrast, Moon, Sun } from 'lucide-react';
 import { useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
@@ -21,8 +21,6 @@ export function Header() {
   const t = useT();
   const l = useL10n();
   const view = useMonitor((s) => s.view);
-  const panel = useMonitor((s) => s.panel);
-  const setPanel = useMonitor((s) => s.setPanel);
   const confirmMode = useMonitor((s) => s.confirmMode);
   const clinician = useMonitor((s) => s.clinician);
   const theme = usePrefs((s) => s.theme);
@@ -30,6 +28,8 @@ export function Header() {
   const lang = usePrefs((s) => s.lang);
   const toggleLang = usePrefs((s) => s.toggleLang);
   const { bedId = '4' } = useParams();
+  const location = useLocation();
+  const isUnit = location.pathname.startsWith('/unit');
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
   const ThemeIcon = theme === 'projector' ? Moon : theme === 'night' ? Sun : Contrast;
   const rejected = view.status === 'REJECTED';
@@ -44,19 +44,21 @@ export function Header() {
     <header className="flex h-18 shrink-0 items-center justify-between gap-4 px-8 compact:h-15 compact:gap-2 compact:px-4">
       <div className="flex min-w-0 items-center gap-4 compact:gap-2">
         <Wordmark compact={false} className="compact:[&>span:last-child]:hidden" />
-        <span
-          className="nowrap inline-flex h-10 min-w-0 items-center gap-1.5 rounded-full border-theme border-card-border bg-card px-3.5 text-base hc:border-ink"
-          aria-label={t.header.patient(view.patient.ref, view.patient.bed)}
-          title={`${view.patient.ref} · ${t.header.bed(view.patient.bed)} · ${l(view.patient.setting)} · ${l(view.patient.day)}`}
-        >
-          <span className="font-bold">{view.patient.ref}</span>
-          <span className="truncate text-text-2">
-            · {t.header.bed(view.patient.bed)}
-            <span className="compact:hidden">
-              {' '}· {l(view.patient.setting)} · {l(view.patient.day)}
+        {!isUnit && (
+          <span
+            className="nowrap inline-flex h-10 min-w-0 items-center gap-1.5 rounded-full border-theme border-card-border bg-card px-3.5 text-base hc:border-ink"
+            aria-label={t.header.patient(view.patient.ref, view.patient.bed)}
+            title={`${view.patient.ref} · ${t.header.bed(view.patient.bed)} · ${l(view.patient.setting)} · ${l(view.patient.day)}`}
+          >
+            <span className="font-bold">{view.patient.ref}</span>
+            <span className="truncate text-text-2">
+              · {t.header.bed(view.patient.bed)}
+              <span className="compact:hidden">
+                {' '}· {l(view.patient.setting)} · {l(view.patient.day)}
+              </span>
             </span>
           </span>
-        </span>
+        )}
       </div>
 
       <nav aria-label={t.header.main} className="shrink-0">
@@ -82,9 +84,9 @@ export function Header() {
             </NavLink>
           </li>
           <li>
-            <button type="button" aria-pressed={panel === 'audit'} onClick={() => setPanel(panel === 'audit' ? null : 'audit')} className={navItem(false)}>
+            <NavLink to={`/bed/${bedId}/audit`} className={({ isActive }) => navItem(isActive)}>
               {t.nav.audit}
-            </button>
+            </NavLink>
           </li>
         </ul>
       </nav>

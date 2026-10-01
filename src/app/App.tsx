@@ -1,10 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { useT } from '@/i18n';
 import { TooltipProvider } from '@/components/ui/Tooltip';
 import { Toaster } from '@/components/ui/Toast';
 import { ComponentsPage } from '@/dev/ComponentsPage';
 import { MonitorPage } from '@/features/monitor/MonitorPage';
-import { Placeholder } from '@/features/monitor/Placeholder';
+import { AdmissionWizard } from '@/features/admission/AdmissionWizard';
+import { UnitPage } from '@/features/unit/UnitPage';
+import { TimelinePage } from '@/features/timeline/TimelinePage';
+import { AssessmentsPage } from '@/features/assessments/AssessmentsPage';
+import { AuditTrailPage } from '@/features/audit/AuditTrailPage';
 import { ThemeSync } from './ThemeSync';
 
 export function App() {
@@ -20,15 +23,17 @@ export function App() {
 }
 
 function AppRoutes() {
-  const t = useT();
   return (
     <Routes>
       <Route path="/dev/components" element={<ComponentsPage />} />
       <Route path="/bed/:bedId/monitor" element={<MonitorPage />} />
-      <Route path="/bed/:bedId/timeline" element={<Placeholder title={t.nav.timeline} />} />
-      <Route path="/bed/:bedId/assessments" element={<Placeholder title={t.nav.assessments} />} />
-      <Route path="/unit" element={<Placeholder title={t.nav.unit} />} />
+      <Route path="/bed/:bedId/timeline" element={<TimelinePage />} />
+      <Route path="/bed/:bedId/assessments" element={<AssessmentsPage />} />
+      <Route path="/bed/:bedId/audit" element={<AuditTrailPage />} />
+      <Route path="/bed/:bedId/admission" element={<AdmissionWizard />} />
+      <Route path="/unit" element={<UnitPage />} />
       <Route path="*" element={<Navigate to="/bed/4/monitor" replace />} />
     </Routes>
   );
 }
+
