@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { MessageSquare, RefreshCw, Tag, ZoomIn } from 'lucide-react';
+import { MessageSquare, RefreshCw, Tag, ZoomIn, Sparkles, Maximize2 } from 'lucide-react';
 import { useFormat, useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { useMonitor } from '@/store/monitor';
@@ -12,6 +12,8 @@ import { Silhouette } from './Silhouette';
 import { SignalCheck } from '@/features/monitor/Calibration';
 import { FIGURE_VIEWBOX } from './figure';
 import { useCompact } from '@/features/monitor/useCompact';
+import { Anatomy3DView } from './Anatomy3D/Anatomy3DView';
+import { Anatomy3DStudioDialog } from './Anatomy3D/Anatomy3DStudioDialog';
 
 /*
  * Design canvas = the A1 centre column at 1920×1080: 928 × 830 px. All positions below are
@@ -66,6 +68,8 @@ export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
   const compact = useCompact();
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: DESIGN_W, h: 830 });
+  const [bodyMode, setBodyMode] = useState<'3d' | '2d'>('3d');
+  const [studioOpen, setStudioOpen] = useState(false);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -79,18 +83,14 @@ export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
 
   // Scale the figure with the column width (never up), keep text at native size.
   const zoom = rail.zoom ? 1.45 : 1;
-  // Compact: callouts are hidden (the drivers card carries them), so the figure may use the width.
-  // Lowest sensor (PPG) sits at ≈ 470 px in design space; keep it above the timeline card.
   const s = Math.min(1, size.w / (compact ? 660 : DESIGN_W), (size.h - reserveBottom - 24) / 470) * zoom;
   const zoomOrigin = rail.zoom ? SENSOR_POS.eda : null;
   const toStage = (p: { x: number; y: number }) => {
     let x = (p.x - FIGURE_VIEWBOX.x) * FIG_SCALE + FIG_LEFT;
     let y = (p.y - FIGURE_VIEWBOX.y) * FIG_SCALE + FIG_TOP;
-    // centre the design canvas horizontally, then scale about the top centre
     x = size.w / 2 + (x - DESIGN_W / 2) * s;
     y = y * s;
     if (zoomOrigin) {
-      // keep the wrist cluster in view when zoomed
       const o = { x: (zoomOrigin.x - FIGURE_VIEWBOX.x) * FIG_SCALE + FIG_LEFT, y: (zoomOrigin.y - FIGURE_VIEWBOX.y) * FIG_SCALE + FIG_TOP };
       x -= (o.x - DESIGN_W / 2) * (s - s / zoom);
       y -= o.y * (s - s / zoom) - 60;
@@ -113,61 +113,137 @@ export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
     <div ref={ref} role="group" aria-label={t.body.stage} className="relative h-full w-full overflow-hidden">
       <FloorGrid />
 
-      <div className="absolute" style={{ left: figOrigin.x, top: figOrigin.y, width: figW }}>
-        <Silhouette className="h-auto w-full" />
+      {/* Mode Switcher: 3D Muscled Anatomy vs 2D Flat Map */}
+      <div className="absolute left-6 top-3 z-20 flex items-center gap-1 rounded-full border border-card-outline bg-card/90 p-1 shadow-sm backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => setBodyMode('3d')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition',
+            bodyMode === '3d'
+              ? 'bg-accent text-accent-contrast shadow-xs'
+              : 'text-text-2 hover:bg-subtle hover:text-text-1',
+          )}
+        >
+          <Sparkles size={13} />
+          3D Muscled Anatomy
+        </button>
+        <button
+          type="button"
+          onClick={() => setBodyMode('2d')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition',
+            bodyMode === '2d'
+              ? 'bg-accent text-accent-contrast shadow-xs'
+              : 'text-text-2 hover:bg-subtle hover:text-text-1',
+          )}
+        >
+          2D Map
+        </button>
+        <div className="mx-1 h-3.5 w-px bg-card-outline" />
+        <button
+          type="button"
+          onClick={() => setStudioOpen(true)}
+          className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/15"
+          title="Open Fullscreen 3D Anatomy Studio"
+        >
+          <Maximize2 size={13} />
+          <span className="compact:hidden">3D Studio</span>
+        </button>
       </div>
 
-      {rail.back ? (
-        <p className="absolute left-1/2 top-1/3 -translate-x-1/2 rounded-full bg-card px-4 py-2 text-sm text-text-2 shadow-card">{t.body.backView}</p>
-      ) : null}
+      {/* Body Visualization */}
+      {bodyMode === '3d' ? (
+        <div
+          className="absolute inset-x-0 top-10 flex items-center justify-center overflow-hidden"
+          style={{ bottom: reserveBottom - 20 }}
+        >
+          <Anatomy3DView
+            onOpenStudio={() => setStudioOpen(true)}
+            compact={compact}
+            className="h-full w-full max-w-[680px]"
+          />
+        </div>
+      ) : (
+        <>
+          <div className="absolute" style={{ left: figOrigin.x, top: figOrigin.y, width: figW }}>
+            <Silhouette className="h-auto w-full" />
+          </div>
 
-      {/* leader lines */}
-      {callouts.length > 0 ? (
-        <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-          {callouts.map((c) => (
-            <polyline
-              key={c.driver.id}
-              points={c.leader.map((p) => `${p.x},${p.y}`).join(' ')}
-              fill="none"
-              className="stroke-muted hc:stroke-ink"
-              strokeWidth="1.25"
-            />
-          ))}
-          {callouts.map((c) => {
-            const end = c.leader[c.leader.length - 1];
-            return end ? <circle key={`${c.driver.id}-dot`} cx={end.x} cy={end.y} r="2.5" className="fill-muted hc:fill-ink" /> : null;
-          })}
-        </svg>
-      ) : null}
+          {rail.back ? (
+            <p className="absolute left-1/2 top-1/3 -translate-x-1/2 rounded-full bg-card px-4 py-2 text-sm text-text-2 shadow-card">
+              {t.body.backView}
+            </p>
+          ) : null}
 
-      {/* hotspots + labels */}
-      {!rail.back &&
-        sensors.map((k) => {
-          const ch = view.channels[k] as ChannelView;
-          const p = toStage(SENSOR_POS[k]);
-          return (
-            <Hotspot
-              key={k}
-              sensor={k}
-              channel={ch}
-              x={p.x}
-              y={p.y}
-              highlighted={highlightedSensor === k}
-              showLabel={rail.labels}
-              farLabel={k === 'ppg' && !!ch.note && ch.state !== 'rejected'}
-              stageW={size.w}
-            />
-          );
-        })}
+          {/* leader lines */}
+          {callouts.length > 0 ? (
+            <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+              {callouts.map((c) => (
+                <polyline
+                  key={c.driver.id}
+                  points={c.leader.map((p) => `${p.x},${p.y}`).join(' ')}
+                  fill="none"
+                  className="stroke-muted hc:stroke-ink"
+                  strokeWidth="1.25"
+                />
+              ))}
+              {callouts.map((c) => {
+                const end = c.leader[c.leader.length - 1];
+                return end ? (
+                  <circle
+                    key={`${c.driver.id}-dot`}
+                    cx={end.x}
+                    cy={end.y}
+                    r="2.5"
+                    className="fill-muted hc:fill-ink"
+                  />
+                ) : null;
+              })}
+            </svg>
+          ) : null}
 
-      {/* driver callouts */}
-      {callouts.map((c) => (
-        <Callout key={c.driver.id} driver={c.driver} x={c.x} y={c.y} w={c.w} highlighted={highlight === c.driver.id || highlightedSensor === c.driver.sensor} />
-      ))}
+          {/* hotspots + labels */}
+          {!rail.back &&
+            sensors.map((k) => {
+              const ch = view.channels[k] as ChannelView;
+              const p = toStage(SENSOR_POS[k]);
+              return (
+                <Hotspot
+                  key={k}
+                  sensor={k}
+                  channel={ch}
+                  x={p.x}
+                  y={p.y}
+                  highlighted={highlightedSensor === k}
+                  showLabel={rail.labels}
+                  farLabel={k === 'ppg' && !!ch.note && ch.state !== 'rejected'}
+                  stageW={size.w}
+                />
+              );
+            })}
+        </>
+      )}
+
+      {/* driver callouts (in 2D mode) */}
+      {bodyMode === '2d' &&
+        callouts.map((c) => (
+          <Callout
+            key={c.driver.id}
+            driver={c.driver}
+            x={c.x}
+            y={c.y}
+            w={c.w}
+            highlighted={highlight === c.driver.id || highlightedSensor === c.driver.sensor}
+          />
+        ))}
 
       {view.calibrating ? <SignalCheck channels={view.channels} /> : null}
-      <ToolRail hasDrivers={view.drivers.length > 0} />
+      <ToolRail hasDrivers={view.drivers.length > 0} onOpenStudio={() => setStudioOpen(true)} />
       <SensorLegend states={legendStates} withShapes={false} className="absolute bottom-[262px] left-6 compact:hidden" />
+
+      {/* Fullscreen 3D Anatomy Studio Dialog */}
+      <Anatomy3DStudioDialog open={studioOpen} onOpenChange={setStudioOpen} />
     </div>
   );
 }
@@ -360,7 +436,7 @@ function Callout({ driver, x, y, w, highlighted }: { driver: DriverView; x: numb
   );
 }
 
-function ToolRail({ hasDrivers }: { hasDrivers: boolean }) {
+function ToolRail({ hasDrivers, onOpenStudio }: { hasDrivers: boolean; onOpenStudio?: () => void }) {
   const t = useT();
   const rail = useMonitor((s) => s.rail);
   const toggle = useMonitor((s) => s.toggleRail);
@@ -378,6 +454,11 @@ function ToolRail({ hasDrivers }: { hasDrivers: boolean }) {
             {i.label}
           </li>
         ))}
+        {onOpenStudio && (
+          <li className="nowrap flex h-[52px] items-center text-sm text-accent compact:hidden" aria-hidden>
+            3D Studio
+          </li>
+        )}
       </ul>
       <div className="flex flex-col rounded-full bg-card p-1 shadow-card hc:border-2 hc:border-ink">
         {items.map((i) => {
@@ -399,6 +480,16 @@ function ToolRail({ hasDrivers }: { hasDrivers: boolean }) {
             </button>
           );
         })}
+        {onOpenStudio && (
+          <button
+            type="button"
+            aria-label="Open 3D Muscled Anatomy Studio"
+            onClick={onOpenStudio}
+            className="my-1 grid h-11 w-11 place-items-center rounded-full text-accent transition-colors duration-150 hover:bg-accent/15"
+          >
+            <Sparkles aria-hidden size={19} strokeWidth={2} />
+          </button>
+        )}
       </div>
     </div>
   );
