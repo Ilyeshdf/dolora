@@ -1,116 +1,175 @@
-import { useState } from 'react';
 import Body, { type ExtendedBodyPart, type Slug } from 'react-muscle-highlighter';
 import { useView } from '@/features/monitor/useView';
 import { useMonitor } from '@/store/monitor';
-import { toast } from '@/components/ui/toastStore';
-import { Activity, RefreshCw, User } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import type { SensorId } from '@/contracts/monitor';
+
+export interface PainPinRef {
+  id: string;
+  rx: number;
+  ry: number;
+  side: 'front' | 'back';
+  region: string;
+  intensity: number;
+  type: 'external' | 'internal';
+}
 
 interface MuscleHighlighterBodyProps {
   className?: string;
+  /** Dynamic scale computed by parent so the body fills available height */
   scale?: number;
-  interactive?: boolean;
+  gender: 'male' | 'female';
+  highlightedSensor?: SensorId | null;
+  painPins?: PainPinRef[];
 }
 
 export function MuscleHighlighterBody({
   className,
-  scale = 1.35,
-  interactive = true,
+  scale = 1.4,
+  gender,
+  highlightedSensor,
+  painPins = [],
 }: MuscleHighlighterBodyProps) {
   const view = useView();
   const rail = useMonitor((s) => s.rail);
-  const toggleRail = useMonitor((s) => s.toggleRail);
+  const isBack = !!rail.back;
 
-  const [gender, setGender] = useState<'male' | 'female'>('male');
-  const [selectedPart, setSelectedPart] = useState<Slug | null>(null);
-
-  // Derive muscle highlights from live clinical distress / pain score
+  // Live clinical distress / pain score
   const painScore = view?.pain?.score ?? 5.3;
   const isHighPain = painScore >= 6.0;
   const painColor = isHighPain ? '#ef4444' : painScore >= 3.5 ? '#f59e0b' : '#3b82f6';
 
-  // Base clinical muscle data
-  const defaultBodyData: ExtendedBodyPart[] = [
-    { slug: 'chest', color: painColor, intensity: isHighPain ? 2 : 1 },
-    { slug: 'abs', color: '#f59e0b', intensity: 1 },
-    { slug: 'head', color: isHighPain ? '#ef4444' : '#6366f1', intensity: isHighPain ? 2 : 1 },
-    { slug: 'forearm', color: '#10b981', intensity: 1 },
-    { slug: 'trapezius', color: '#ec4899', intensity: 1 },
-    { slug: 'triceps', color: '#06b6d4', intensity: 1 },
-    { slug: 'quadriceps', color: '#8b5cf6', intensity: 1 },
-  ];
-
-  // If a muscle was clicked, highlight it specifically
-  const bodyData: readonly ExtendedBodyPart[] = selectedPart
-    ? defaultBodyData.map((item) =>
-        item.slug === selectedPart
-          ? { ...item, color: '#f43f5e', intensity: 2 }
-          : item,
-      )
-    : defaultBodyData;
-
-  const handleBodyPartPress = (part: ExtendedBodyPart) => {
-    if (!part.slug) return;
-    setSelectedPart(part.slug);
-    toast({
-      title: `Muscle: ${part.slug.toUpperCase()}`,
-      description: `Targeted anatomical zone mapped to patient telemetry.`,
-    });
+  // Map sensor to muscle slugs for visual callout on both front and back
+  const sensorToMusclesFront: Record<SensorId, Slug[]> = {
+    face:      ['head', 'neck'],
+    breathing: ['chest'],
+    motion:    ['forearm', 'quadriceps'],
+    temp:      ['biceps', 'forearm'],
+    eda:       ['forearm', 'hands'],
+    ppg:       ['forearm', 'hands'],
   };
 
+  const sensorToMusclesBack: Record<SensorId, Slug[]> = {
+    face:      ['head', 'neck'],
+    breathing: ['upper-back', 'trapezius'],
+    motion:    ['forearm', 'hamstring'],
+    temp:      ['triceps', 'forearm'],
+    eda:       ['forearm', 'hands'],
+    ppg:       ['forearm', 'hands'],
+  };
+
+  const activeSensorMuscles = highlightedSensor
+    ? (isBack ? sensorToMusclesBack[highlightedSensor] : sensorToMusclesFront[highlightedSensor]) || []
+    : [];
+
+  // Check if any doctor pain pins on the current side correspond to muscle groups
+  const visiblePins = painPins.filter((p) => p.side === (isBack ? 'back' : 'front'));
+  const hasPinIn = (labels: string[]) =>
+    visiblePins.some((p) => labels.some((l) => p.region.toLowerCase().includes(l.toLowerCase())));
+
+  // Front vs Back body part highlight definitions
+  const bodyData: readonly ExtendedBodyPart[] = isBack
+    ? [
+        {
+          slug: 'head',
+          color: activeSensorMuscles.includes('head') ? '#f43f5e' : hasPinIn(['head']) ? '#ef4444' : '#6366f1',
+          intensity: hasPinIn(['head']) || isHighPain ? 2 : 1,
+        },
+        {
+          slug: 'trapezius',
+          color: activeSensorMuscles.includes('trapezius') ? '#f43f5e' : hasPinIn(['neck', 'shoulder']) ? '#f97316' : '#ec4899',
+          intensity: 1,
+        },
+        {
+          slug: 'upper-back',
+          color: activeSensorMuscles.includes('upper-back') ? '#f43f5e' : hasPinIn(['chest', 'back']) ? '#ef4444' : '#f59e0b',
+          intensity: 2,
+        },
+        {
+          slug: 'lower-back',
+          color: hasPinIn(['abdomen', 'hip', 'spine']) ? '#ef4444' : '#eab308',
+          intensity: hasPinIn(['abdomen', 'hip', 'spine']) ? 2 : 1,
+        },
+        {
+          slug: 'triceps',
+          color: activeSensorMuscles.includes('triceps') ? '#f43f5e' : '#06b6d4',
+          intensity: 1,
+        },
+        {
+          slug: 'forearm',
+          color: activeSensorMuscles.includes('forearm') ? '#f43f5e' : hasPinIn(['arm', 'hand']) ? '#f97316' : '#10b981',
+          intensity: activeSensorMuscles.includes('forearm') ? 2 : 1,
+        },
+        {
+          slug: 'gluteal',
+          color: hasPinIn(['hip']) ? '#ef4444' : '#8b5cf6',
+          intensity: 1,
+        },
+        {
+          slug: 'hamstring',
+          color: activeSensorMuscles.includes('hamstring') ? '#f43f5e' : hasPinIn(['thigh']) ? '#ef4444' : '#6366f1',
+          intensity: 1,
+        },
+        {
+          slug: 'calves',
+          color: hasPinIn(['shin', 'knee', 'foot']) ? '#ef4444' : '#06b6d4',
+          intensity: 1,
+        },
+      ]
+    : [
+        {
+          slug: 'chest',
+          color: activeSensorMuscles.includes('chest') ? '#f43f5e' : hasPinIn(['chest']) ? '#ef4444' : painColor,
+          intensity: hasPinIn(['chest']) || isHighPain ? 2 : 1,
+        },
+        {
+          slug: 'abs',
+          color: activeSensorMuscles.includes('abs') ? '#f43f5e' : hasPinIn(['abdomen']) ? '#ef4444' : '#f59e0b',
+          intensity: hasPinIn(['abdomen']) ? 2 : 1,
+        },
+        {
+          slug: 'head',
+          color: activeSensorMuscles.includes('head') ? '#f43f5e' : hasPinIn(['head']) ? '#ef4444' : isHighPain ? '#ef4444' : '#6366f1',
+          intensity: hasPinIn(['head']) || isHighPain ? 2 : 1,
+        },
+        {
+          slug: 'forearm',
+          color: activeSensorMuscles.includes('forearm') ? '#f43f5e' : hasPinIn(['arm', 'hand']) ? '#ef4444' : '#10b981',
+          intensity: activeSensorMuscles.includes('forearm') ? 2 : 1,
+        },
+        {
+          slug: 'biceps',
+          color: activeSensorMuscles.includes('biceps') ? '#f43f5e' : '#06b6d4',
+          intensity: 1,
+        },
+        {
+          slug: 'trapezius',
+          color: activeSensorMuscles.includes('trapezius') ? '#f43f5e' : hasPinIn(['neck', 'shoulder']) ? '#f97316' : '#ec4899',
+          intensity: 1,
+        },
+        {
+          slug: 'quadriceps',
+          color: activeSensorMuscles.includes('quadriceps') ? '#f43f5e' : hasPinIn(['thigh', 'knee']) ? '#ef4444' : '#8b5cf6',
+          intensity: 1,
+        },
+        {
+          slug: 'calves',
+          color: hasPinIn(['shin', 'foot']) ? '#ef4444' : '#06b6d4',
+          intensity: 1,
+        },
+      ];
+
   return (
-    <div className={cn('relative flex flex-col items-center justify-center', className)}>
-      {/* Top Controls Overlay */}
-      <div className="absolute top-2 z-10 flex items-center gap-2 rounded-full border border-card-outline bg-card/90 px-3 py-1.5 shadow-sm backdrop-blur-md">
-        <button
-          type="button"
-          onClick={() => toggleRail('back')}
-          className="flex items-center gap-1.5 text-xs font-semibold text-text-2 hover:text-text-1"
-          title="Toggle Front/Back View"
-        >
-          <RefreshCw size={13} className={cn('transition-transform duration-300', rail.back ? 'rotate-180' : '')} />
-          <span>{rail.back ? 'Back View' : 'Front View'}</span>
-        </button>
-        <div className="h-3 w-px bg-card-outline" />
-        <button
-          type="button"
-          onClick={() => setGender(gender === 'male' ? 'female' : 'male')}
-          className="flex items-center gap-1.5 text-xs font-semibold text-text-2 hover:text-text-1"
-          title="Toggle Anatomy Model"
-        >
-          <User size={13} />
-          <span className="capitalize">{gender}</span>
-        </button>
-      </div>
-
-      {/* React Muscle Highlighter SVG */}
-      <div className="relative mt-8 flex items-center justify-center p-4">
-        <Body
-          data={bodyData}
-          side={rail.back ? 'back' : 'front'}
-          gender={gender}
-          scale={scale}
-          onBodyPartPress={interactive ? handleBodyPartPress : undefined}
-          defaultFill="#1e293b"
-          defaultStroke="#334155"
-          defaultStrokeWidth={1.5}
-        />
-      </div>
-
-      {/* Selected Muscle Indicator */}
-      {selectedPart && (
-        <div className="absolute bottom-2 z-10 flex items-center gap-2 rounded-full border border-accent/40 bg-card/95 px-3 py-1 text-xs font-medium text-accent shadow-md backdrop-blur-sm animate-in fade-in">
-          <Activity size={13} />
-          <span>Selected Muscle: <strong className="uppercase">{selectedPart}</strong></span>
-          <button
-            type="button"
-            onClick={() => setSelectedPart(null)}
-            className="ml-1 text-text-2 hover:text-text-1"
-          >
-            ×
-          </button>
-        </div>
-      )}
+    <div className={cn('pointer-events-none select-none', className)}>
+      <Body
+        data={bodyData}
+        side={isBack ? 'back' : 'front'}
+        gender={gender}
+        scale={scale}
+        defaultFill="#1e293b"
+        defaultStroke="#334155"
+        defaultStrokeWidth={1.5}
+      />
     </div>
   );
 }
