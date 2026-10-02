@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { MessageSquare, RefreshCw, Tag, ZoomIn, Sparkles, Maximize2 } from 'lucide-react';
+import { MessageSquare, RefreshCw, Tag, ZoomIn, Sparkles, Maximize2, Activity } from 'lucide-react';
 import { useFormat, useL10n, useT } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { useMonitor } from '@/store/monitor';
@@ -14,6 +14,7 @@ import { FIGURE_VIEWBOX } from './figure';
 import { useCompact } from '@/features/monitor/useCompact';
 import { Anatomy3DView } from './Anatomy3D/Anatomy3DView';
 import { Anatomy3DStudioDialog } from './Anatomy3D/Anatomy3DStudioDialog';
+import { MuscleHighlighterBody } from './MuscleHighlighterBody';
 
 /*
  * Design canvas = the A1 centre column at 1920×1080: 928 × 830 px. All positions below are
@@ -68,7 +69,7 @@ export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
   const compact = useCompact();
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: DESIGN_W, h: 830 });
-  const [bodyMode, setBodyMode] = useState<'3d' | '2d'>('3d');
+  const [bodyMode, setBodyMode] = useState<'muscle' | '3d' | '2d'>('muscle');
   const [studioOpen, setStudioOpen] = useState(false);
 
   useLayoutEffect(() => {
@@ -113,8 +114,21 @@ export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
     <div ref={ref} role="group" aria-label={t.body.stage} className="relative h-full w-full overflow-hidden">
       <FloorGrid />
 
-      {/* Mode Switcher: 3D Muscled Anatomy vs 2D Flat Map */}
+      {/* Mode Switcher: Muscle Highlighter vs 3D Muscled Anatomy vs 2D Flat Map */}
       <div className="absolute left-6 top-3 z-20 flex items-center gap-1 rounded-full border border-card-outline bg-card/90 p-1 shadow-sm backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => setBodyMode('muscle')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition',
+            bodyMode === 'muscle'
+              ? 'bg-accent text-accent-contrast shadow-xs'
+              : 'text-text-2 hover:bg-subtle hover:text-text-1',
+          )}
+        >
+          <Activity size={13} />
+          Muscle Highlighter
+        </button>
         <button
           type="button"
           onClick={() => setBodyMode('3d')}
@@ -126,7 +140,7 @@ export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
           )}
         >
           <Sparkles size={13} />
-          3D Muscled Anatomy
+          3D Anatomy
         </button>
         <button
           type="button"
@@ -153,7 +167,14 @@ export function BodyStage({ reserveBottom = 238 }: { reserveBottom?: number }) {
       </div>
 
       {/* Body Visualization */}
-      {bodyMode === '3d' ? (
+      {bodyMode === 'muscle' ? (
+        <div
+          className="absolute inset-x-0 top-14 flex items-center justify-center overflow-hidden"
+          style={{ bottom: reserveBottom - 20 }}
+        >
+          <MuscleHighlighterBody scale={1.2} interactive={true} />
+        </div>
+      ) : bodyMode === '3d' ? (
         <div
           className="absolute inset-x-0 top-10 flex items-center justify-center overflow-hidden"
           style={{ bottom: reserveBottom - 20 }}
