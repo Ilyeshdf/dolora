@@ -1,6 +1,41 @@
+# Dependencies
 node_modules
+.pnp
+.pnp.js
+
+# Production build
 dist
+dist-ssr
+
+# Environment variables & secrets (CRITICAL: Private & hidden)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Vite cache & temp files
+.vite
+
+# Screenshots & test coverage
 screenshots/*.png
 !screenshots/.gitkeep
-*.log
-.vite
+coverage
+
+# OS & Editor files
+.DS_Store
+*.pem
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
