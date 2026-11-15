@@ -13,3 +13,4 @@ export const ENV = {
   DEFAULT_BED_ID: import.meta.env.VITE_DEFAULT_BED_ID || '4',
   DEFAULT_LOCALE: (import.meta.env.VITE_DEFAULT_LOCALE as 'en' | 'fr') || 'en',
 } as const;
+
